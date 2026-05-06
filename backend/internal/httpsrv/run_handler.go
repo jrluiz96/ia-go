@@ -235,3 +235,47 @@ func (h *RunHandler) ReportStatus(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse(w, map[string]string{"status": "ok"}, http.StatusOK)
 }
+
+// Heartbeat é chamado pelo worker durante execução para sinalizar que está vivo.
+// POST /api/v1/runs/{runID}/heartbeat
+func (h *RunHandler) Heartbeat(w http.ResponseWriter, r *http.Request) {
+	runID := chi.URLParam(r, "runID")
+	if runID == "" {
+		jsonError(w, "runID inválido", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.runRepo.UpdateHeartbeat(r.Context(), runID); err != nil {
+		jsonError(w, "erro ao atualizar heartbeat: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, map[string]string{"status": "ok"}, http.StatusOK)
+}
+
+// OpsSummary retorna sumário operacional: contagem por status, runs travadas.
+// GET /api/v1/ops/summary
+func (h *RunHandler) OpsSummary(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.runRepo.CountByStatus(r.Context())
+	if err != nil {
+		jsonError(w, "erro ao buscar sumário: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	stuck, err := h.runRepo.GetStuckRuns(r.Context(), 5*time.Minute)
+	if err != nil {
+		jsonError(w, "erro ao buscar runs travadas: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	stuckIDs := make([]string, 0, len(stuck))
+	for _, r := range stuck {
+		stuckIDs = append(stuckIDs, r.RunID)
+	}
+
+	jsonResponse(w, map[string]interface{}{
+		"status_counts": counts,
+		"stuck_runs":    stuckIDs,
+		"stuck_count":   len(stuckIDs),
+	}, http.StatusOK)
+}

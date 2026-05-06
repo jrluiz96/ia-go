@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"ia-go/backend/internal/domain"
 
@@ -170,4 +171,68 @@ func (r *RunRepo) ListEvents(ctx context.Context, runID string) ([]*domain.RunEv
 		events = append(events, e)
 	}
 	return events, nil
+}
+
+// UpdateHeartbeat atualiza last_heartbeat da run para NOW().
+func (r *RunRepo) UpdateHeartbeat(ctx context.Context, runID string) error {
+	const q = `UPDATE bot_runs SET last_heartbeat = NOW(), updated_at = NOW() WHERE run_id = $1`
+	_, err := r.db.Exec(ctx, q, runID)
+	return err
+}
+
+// GetStuckRuns retorna runs em status 'running' cujo last_heartbeat é mais antigo
+// que o threshold informado (ou NULL), indicando possível travamento.
+func (r *RunRepo) GetStuckRuns(ctx context.Context, olderThan time.Duration) ([]*domain.BotRun, error) {
+	const q = `
+		SELECT id, run_id, bot_id, bot_version_id, run_type, status,
+		       scheduled_at, started_at, finished_at,
+		       error_code, error_message, trace_id, attempt, created_at
+		FROM bot_runs
+		WHERE status = 'running'
+		  AND (last_heartbeat IS NULL OR last_heartbeat < NOW() - $1::interval)
+		ORDER BY started_at ASC`
+
+	rows, err := r.db.Query(ctx, q, olderThan.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var runs []*domain.BotRun
+	for rows.Next() {
+		run := &domain.BotRun{}
+		var botVersionID *uuid.UUID
+		if err := rows.Scan(
+			&run.ID, &run.RunID, &run.BotID, &botVersionID, &run.RunType, &run.Status,
+			&run.ScheduledAt, &run.StartedAt, &run.FinishedAt,
+			&run.ErrorCode, &run.ErrorMessage, &run.TraceID, &run.Attempt, &run.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		run.BotVersionID = botVersionID
+		runs = append(runs, run)
+	}
+	return runs, nil
+}
+
+// CountByStatus retorna contagem de runs agrupada por status.
+// Usado pelo endpoint de sumário operacional.
+func (r *RunRepo) CountByStatus(ctx context.Context) (map[string]int, error) {
+	const q = `SELECT status, COUNT(*) FROM bot_runs GROUP BY status`
+	rows, err := r.db.Query(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := map[string]int{}
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		counts[status] = count
+	}
+	return counts, nil
 }

@@ -217,3 +217,133 @@ class TestProcessJobContractJson:
         worker_main.process_job(payload)
 
         assert captured_contract["obj"].bot_version == 1, "fallback usa bot_version=1 quando JSON inválido"
+
+
+# ---------------------------------------------------------------------------
+# Retry / backoff
+# ---------------------------------------------------------------------------
+
+class TestRetryPolicy:
+    """Testa o loop de retry deterministico em _execute_with_retry."""
+
+    def _make_contract(self, max_attempts: int = 3, backoff_sec: int = 0, run_type: str = "scheduled"):
+        from contract import ContractV1, RetryPolicy, TraceInfo, ExecutionContext, AuthProfile
+        return ContractV1(
+            run_id="run_retry_001",
+            bot_id="bot_test",
+            bot_version=1,
+            run_type=run_type,
+            retry_policy=RetryPolicy(max_attempts=max_attempts, backoff_sec=backoff_sec, retry_on="retryable_error"),
+            trace=TraceInfo(trace_id="trace_001", run_id="run_retry_001"),
+        )
+
+    def test_retorna_success_sem_retry(self, mocker):
+        """Sem erro, retorna success na primeira tentativa."""
+        import runner as runner_module
+
+        mocker.patch.object(runner_module, "run", return_value=make_output(status=RunStatus.success))
+
+        contract = self._make_contract(max_attempts=3)
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        assert output.status == RunStatus.success
+        assert runner_module.run.call_count == 1
+
+    def test_retryable_error_reexecuta_ate_max_attempts(self, mocker):
+        """retryable_error faz retry até max_attempts e promove a fatal_error."""
+        import runner as runner_module
+
+        retryable = make_output(status=RunStatus.retryable_error)
+        retryable.error_code = "ERR_TIMEOUT"
+        mocker.patch.object(runner_module, "run", return_value=retryable)
+        mocker.patch("time.sleep")  # não bloquear o teste
+
+        contract = self._make_contract(max_attempts=3, backoff_sec=1)
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        assert output.status == RunStatus.fatal_error
+        assert output.error_code == "ERR_MAX_ATTEMPTS"
+        assert runner_module.run.call_count == 3
+
+    def test_retryable_error_para_se_sucesso_em_segunda_tentativa(self, mocker):
+        """Após retryable_error, encerra ao obter success na segunda tentativa."""
+        import runner as runner_module
+
+        retryable = make_output(status=RunStatus.retryable_error)
+        retryable.error_code = "ERR_TIMEOUT"
+        success = make_output(status=RunStatus.success)
+        mocker.patch.object(runner_module, "run", side_effect=[retryable, success])
+        mocker.patch("time.sleep")
+
+        contract = self._make_contract(max_attempts=3, backoff_sec=1)
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        assert output.status == RunStatus.success
+        assert runner_module.run.call_count == 2
+
+    def test_fatal_error_nao_faz_retry(self, mocker):
+        """fatal_error encerra imediatamente sem tentar novamente."""
+        import runner as runner_module
+
+        fatal = make_output(status=RunStatus.fatal_error)
+        fatal.error_code = "ERR_EXECUTION"
+        mocker.patch.object(runner_module, "run", return_value=fatal)
+        mocker.patch("time.sleep")
+
+        contract = self._make_contract(max_attempts=3, backoff_sec=1)
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        assert output.status == RunStatus.fatal_error
+        assert runner_module.run.call_count == 1
+
+    def test_ad_hoc_test_nao_faz_retry(self, mocker):
+        """ad_hoc_test tem max_attempts fixo em 1 mesmo que contrato diga outro valor."""
+        import runner as runner_module
+
+        retryable = make_output(status=RunStatus.retryable_error)
+        retryable.error_code = "ERR_TIMEOUT"
+        mocker.patch.object(runner_module, "run", return_value=retryable)
+        mocker.patch("time.sleep")
+
+        # run_type=ad_hoc_test com max_attempts=5 no contrato — deve ignorar
+        contract = self._make_contract(max_attempts=5, backoff_sec=1, run_type="ad_hoc_test")
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        assert output.status == RunStatus.fatal_error
+        assert output.error_code == "ERR_MAX_ATTEMPTS"
+        assert runner_module.run.call_count == 1  # apenas 1 tentativa
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat thread
+# ---------------------------------------------------------------------------
+
+class TestHeartbeatThread:
+    """Testa o _HeartbeatThread do runner."""
+
+    def test_heartbeat_para_quando_stop_e_chamado(self, mocker):
+        """_HeartbeatThread não envia heartbeat após stop()."""
+        import runner as runner_module
+
+        mock_post = mocker.patch("httpx.post")
+        hb = runner_module._HeartbeatThread("run_hb_test_001")
+        hb.start()
+        hb.stop()
+        hb.join(timeout=2)
+
+        assert not hb.is_alive()
+        # pode ter enviado 0 heartbeats (parou antes do intervalo) — não deve ter travado
+        assert mock_post.call_count == 0  # stop antes do primeiro intervalo
+
+    def test_heartbeat_nao_propaga_excecao_de_rede(self, mocker):
+        """Falha de rede no heartbeat não deve encerrar a thread com exceção."""
+        import runner as runner_module
+
+        mocker.patch("httpx.post", side_effect=httpx.ConnectError("connection refused"))
+
+        hb = runner_module._HeartbeatThread("run_hb_test_002")
+        hb.start()
+        hb.stop()
+        hb.join(timeout=2)
+
+        assert not hb.is_alive()

@@ -193,7 +193,70 @@ def process_job(payload_raw: str) -> WorkerOutputV1:
         )
 
     import runner as runner_module
-    return runner_module.run(contract, steps_fn)
+    return _execute_with_retry(contract, steps_fn, bound_log)
+
+
+def _execute_with_retry(
+    contract: ContractV1,
+    steps_fn: object,
+    bound_log: object,
+) -> WorkerOutputV1:
+    """Executa o bot respeitando retry_policy do contrato.
+
+    - retryable_error: reexecuta com backoff até max_attempts
+    - fatal_error / success: encerra imediatamente
+    - ad_hoc_test: max_attempts fixo em 1 (sem retry)
+    """
+    import runner as runner_module
+
+    max_attempts = contract.retry_policy.max_attempts
+    backoff_sec = contract.retry_policy.backoff_sec
+
+    # ad_hoc_test nunca retenta
+    if contract.run_type.value == "ad_hoc_test":
+        max_attempts = 1
+
+    last_output: WorkerOutputV1 | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        if attempt > 1:
+            bound_log.info(
+                "worker.retry",
+                attempt=attempt,
+                max_attempts=max_attempts,
+                backoff_sec=backoff_sec,
+            )
+            time.sleep(backoff_sec)
+
+        output = runner_module.run(contract, steps_fn)
+        last_output = output
+
+        if output.status != RunStatus.retryable_error:
+            bound_log.info("worker.execucao_encerrada", status=output.status, attempt=attempt)
+            return output
+
+        bound_log.warning(
+            "worker.retryable_error",
+            attempt=attempt,
+            max_attempts=max_attempts,
+            error_code=output.error_code,
+        )
+
+    # Esgotou tentativas: promove para fatal_error
+    bound_log.error(
+        "worker.max_attempts_esgotado",
+        max_attempts=max_attempts,
+        error_code=last_output.error_code if last_output else "",
+    )
+    return WorkerOutputV1(
+        run_id=contract.run_id,
+        status=RunStatus.fatal_error,
+        error_code="ERR_MAX_ATTEMPTS",
+        error_message=f"Máximo de {max_attempts} tentativas atingido. Último erro: "
+                      f"{last_output.error_code if last_output else 'unknown'}",
+        metrics=last_output.metrics if last_output else None,
+        artifacts=last_output.artifacts if last_output else [],
+    )
 
 
 def main() -> None:

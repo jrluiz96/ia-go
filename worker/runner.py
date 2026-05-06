@@ -4,9 +4,12 @@ Cada bot implementa execute_steps(page, contract, credentials) -> dict.
 """
 from __future__ import annotations
 
+import os
+import threading
 import time
 from typing import Any, Callable
 
+import httpx
 import structlog
 from playwright.sync_api import Browser, Page, sync_playwright
 
@@ -18,6 +21,29 @@ log = structlog.get_logger()
 
 # Tipo do callable de steps que cada bot fornece
 StepsFn = Callable[[Page, ContractV1, dict[str, Any]], dict[str, Any]]
+
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080")
+_HEARTBEAT_INTERVAL_SEC = 30
+
+
+class _HeartbeatThread(threading.Thread):
+    """Thread daemon que envia heartbeat para a API enquanto o bot executa."""
+
+    def __init__(self, run_id: str) -> None:
+        super().__init__(daemon=True, name=f"heartbeat-{run_id[:8]}")
+        self._run_id = run_id
+        self._stop_event = threading.Event()
+
+    def run(self) -> None:
+        url = f"{API_BASE_URL}/api/v1/runs/{self._run_id}/heartbeat"
+        while not self._stop_event.wait(timeout=_HEARTBEAT_INTERVAL_SEC):
+            try:
+                httpx.post(url, timeout=5)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("runner.heartbeat_falhou", run_id=self._run_id, error=str(exc))
+
+    def stop(self) -> None:
+        self._stop_event.set()
 
 
 def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
@@ -49,6 +75,11 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
             start_time=start,
         )
 
+    # --- Heartbeat thread ---
+    hb = _HeartbeatThread(contract.run_id)
+    hb.start()
+    bound_log.info("runner.heartbeat_iniciado", interval_sec=_HEARTBEAT_INTERVAL_SEC)
+
     # --- Execução com Playwright ---
     timeout_ms = contract.execution_context.timeout_sec * 1000
 
@@ -66,6 +97,7 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
             browser.close()
             bound_log.info("runner.concluido_com_sucesso")
 
+        hb.stop()
         return build_success(
             run_id=contract.run_id,
             result=result,
@@ -74,6 +106,7 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
         )
 
     except TimeoutError as exc:
+        hb.stop()
         bound_log.error("runner.timeout", error=str(exc))
         return build_error(
             run_id=contract.run_id,
@@ -84,6 +117,7 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
             start_time=start,
         )
     except Exception as exc:  # noqa: BLE001
+        hb.stop()
         bound_log.error("runner.erro_fatal", error=str(exc), exc_info=True)
         return build_error(
             run_id=contract.run_id,

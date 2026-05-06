@@ -57,6 +57,10 @@ func NewRouter(h *Handlers) http.Handler {
 		r.Get("/bots/{botID}/runs", h.Run.ListByBot)
 		r.Get("/runs/{runID}/events", h.Run.GetEvents)
 		r.Post("/runs/{runID}/status", h.Run.ReportStatus)
+		r.Post("/runs/{runID}/heartbeat", h.Run.Heartbeat)
+
+		// Operacional
+		r.Get("/ops/summary", h.Run.OpsSummary)
 	})
 
 	return r

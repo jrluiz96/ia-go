@@ -60,10 +60,12 @@ func main() {
 
 	botSvc := service.NewBotService(botRepo, llmClient)
 	scheduler := service.NewScheduler(botRepo, runRepo, schedRepo, queueClient)
+	watchdog := service.NewWatchdog(runRepo)
 
-	// Scheduler: inicia goroutine, cancela no shutdown
+	// Scheduler + Watchdog: goroutines, canceladas no shutdown
 	schedCtx, schedCancel := context.WithCancel(ctx)
 	go scheduler.Start(schedCtx)
+	go watchdog.Start(schedCtx)
 
 	handlers := &httpsrv.Handlers{
 		Bot:      httpsrv.NewBotHandler(botRepo),
@@ -96,7 +98,7 @@ func main() {
 
 	<-quit
 	log.Println("encerrando servidor...")
-	schedCancel() // para o scheduler
+	schedCancel() // para o scheduler e o watchdog
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
