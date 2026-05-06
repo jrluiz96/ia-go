@@ -13,9 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ErrNotFound é retornado quando um registro não existe (distinto de erro de infra).
-var ErrNotFound = errors.New("not found")
-
 type BotRepo struct {
 	db *pgxpool.Pool
 }

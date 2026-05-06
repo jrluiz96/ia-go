@@ -2,6 +2,7 @@ package httpsrv
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"ia-go/backend/internal/domain"
@@ -53,7 +54,11 @@ func (h *BotHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	bot, err := h.botRepo.GetByID(r.Context(), id)
 	if err != nil {
-		jsonError(w, "bot não encontrado", http.StatusNotFound)
+		if errors.Is(err, postgres.ErrNotFound) {
+			jsonError(w, "bot não encontrado", http.StatusNotFound)
+		} else {
+			jsonError(w, "erro ao buscar bot: "+err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 

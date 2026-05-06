@@ -110,3 +110,110 @@ class TestAckCondicional:
         """ACK NAO deve ser chamado quando report_status retorna False (mensagem fica na PEL)."""
         mock_rdb = self._run_cycle(mocker, reported=False)
         mock_rdb.xack.assert_not_called()
+
+
+class TestProcessJobContractJson:
+    """Testes para o caminho contract_json presente no payload (runs agendados)."""
+
+    def _make_payload(self, contract_json=None, extra=None) -> str:
+        import json
+        payload: dict = {
+            "run_id": "run_sched_abc123",
+            "bot_id": "bot_xyz",
+            "run_type": "scheduled",
+            "trace_id": "trace_001",
+            "timeout_sec": 120,
+            "params": {},
+        }
+        if contract_json is not None:
+            payload["contract_json"] = json.dumps(contract_json) if isinstance(contract_json, dict) else contract_json
+        if extra:
+            payload.update(extra)
+        return json.dumps(payload)
+
+    def test_usa_contract_json_quando_presente(self, mocker):
+        """process_job usa contrato publicado quando contract_json está no payload."""
+        contract = {
+            "contract_version": "1.0",
+            "run_id": "antigo",
+            "bot_id": "bot_xyz",
+            "bot_version": 3,
+            "run_type": "scheduled",
+            "params": {},
+            "execution_context": {"timeout_sec": 300, "capabilities": ["web_headless"], "worker_type": "linux_headless"},
+            "retry_policy": {"max_attempts": 3, "backoff_sec": 30, "retry_on": "retryable_error"},
+            "trace": {"trace_id": "trace_001", "run_id": "antigo"},
+        }
+        payload = self._make_payload(contract_json=contract)
+
+        mock_module = MagicMock()
+        mock_module.execute_steps = MagicMock(return_value=None)
+        mocker.patch("importlib.import_module", return_value=mock_module)
+
+        import runner as runner_module
+        mocker.patch.object(runner_module, "run", return_value=make_output("run_sched_abc123"))
+
+        captured_contract = {}
+
+        def capture_run(contract_obj, steps_fn):
+            captured_contract["obj"] = contract_obj
+            return make_output("run_sched_abc123")
+
+        mocker.patch.object(runner_module, "run", side_effect=capture_run)
+
+        output = worker_main.process_job(payload)
+
+        assert output.run_id == "run_sched_abc123"
+        assert captured_contract["obj"].bot_version == 3, "bot_version deve vir do contrato publicado"
+        assert captured_contract["obj"].run_id == "run_sched_abc123", "run_id deve ser sobreposto pelo payload"
+
+    def test_fallback_para_contrato_minimo_sem_contract_json(self, mocker):
+        """process_job usa contrato mínimo quando contract_json está ausente (ad_hoc)."""
+        payload = self._make_payload()  # sem contract_json
+
+        mock_module = MagicMock()
+        mocker.patch("importlib.import_module", return_value=mock_module)
+
+        import runner as runner_module
+
+        captured_contract = {}
+
+        def capture_run(contract_obj, steps_fn):
+            captured_contract["obj"] = contract_obj
+            return make_output("run_sched_abc123")
+
+        mocker.patch.object(runner_module, "run", side_effect=capture_run)
+
+        worker_main.process_job(payload)
+
+        assert captured_contract["obj"].bot_version == 1, "fallback usa bot_version=1"
+
+    def test_contract_json_invalido_usa_fallback(self, mocker):
+        """process_job usa contrato mínimo quando contract_json é JSON inválido."""
+        import json
+        payload = json.dumps({
+            "run_id": "run_sched_abc123",
+            "bot_id": "bot_xyz",
+            "run_type": "scheduled",
+            "trace_id": "trace_001",
+            "timeout_sec": 120,
+            "params": {},
+            "contract_json": "INVALID{JSON",
+        })
+
+        mock_module = MagicMock()
+        mocker.patch("importlib.import_module", return_value=mock_module)
+
+        import runner as runner_module
+
+        captured_contract = {}
+
+        def capture_run(contract_obj, steps_fn):
+            captured_contract["obj"] = contract_obj
+            return make_output("run_sched_abc123")
+
+        mocker.patch.object(runner_module, "run", side_effect=capture_run)
+
+        worker_main.process_job(payload)
+
+        assert captured_contract["obj"].bot_version == 1, "fallback usa bot_version=1 quando JSON inválido"

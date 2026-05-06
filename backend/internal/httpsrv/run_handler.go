@@ -2,6 +2,7 @@ package httpsrv
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -126,7 +127,11 @@ func (h *RunHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	run, err := h.runRepo.GetByRunID(r.Context(), runID)
 	if err != nil {
-		jsonError(w, "execução não encontrada", http.StatusNotFound)
+		if errors.Is(err, postgres.ErrNotFound) {
+			jsonError(w, "execução não encontrada", http.StatusNotFound)
+		} else {
+			jsonError(w, "erro ao buscar execução: "+err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 

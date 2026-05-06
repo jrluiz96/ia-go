@@ -92,7 +92,10 @@ func (s *Scheduler) dispatch(ctx context.Context, sched *domain.BotSchedule) err
 
 	// Idempotência: só avança agenda se o run já foi despachado com sucesso.
 	// fatal_error indica falha de publish anterior — não avança para tentar novamente.
-	existing, _ := s.runRepo.GetByRunID(ctx, runID)
+	existing, err := s.runRepo.GetByRunID(ctx, runID)
+	if err != nil && !errors.Is(err, postgres.ErrNotFound) {
+		return fmt.Errorf("verificar idempotência run_id=%s: %w", runID, err)
+	}
 	if existing != nil {
 		if existing.Status == domain.RunStatusFatalError {
 			return fmt.Errorf("run_id=%s em fatal_error, aguardando próxima janela de minuto", runID)

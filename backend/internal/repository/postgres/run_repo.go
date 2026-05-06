@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"ia-go/backend/internal/domain"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -54,6 +56,9 @@ func (r *RunRepo) GetByRunID(ctx context.Context, runID string) (*domain.BotRun,
 		&run.WorkerID, &run.TraceID, &run.Attempt, &run.CreatedAt, &run.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 

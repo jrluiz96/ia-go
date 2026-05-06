@@ -2,12 +2,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"ia-go/backend/internal/domain"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/robfig/cron/v3"
 )
@@ -109,7 +111,13 @@ func (r *ScheduleRepo) GetByID(ctx context.Context, schedID uuid.UUID) (*domain.
 	s := &domain.BotSchedule{}
 	err := r.db.QueryRow(ctx, q, schedID).
 		Scan(&s.ID, &s.BotID, &s.CronExpr, &s.Timezone, &s.NextRunAt, &s.Enabled, &s.CreatedAt, &s.UpdatedAt)
-	return s, err
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return s, nil
 }
 
 // calcNextRun calcula o próximo horário de execução com base na expressão cron e timezone.
