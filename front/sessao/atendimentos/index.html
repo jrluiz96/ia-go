@@ -1,0 +1,416 @@
+<!-- ================================================================= -->
+<!-- INTERFACE PRINCIPAL DE ATENDIMENTO - SISTEMA OMNICHANNEL        -->
+<!-- ================================================================= -->
+<!-- Esta é a tela principal do sistema de atendimento que integra:   -->
+<!-- - PABX (telefonia)                                              -->
+<!-- - Omnichannel (WhatsApp, Chat, Email)                          -->
+<!-- - Sistema de Tickets/Chamados                                   -->
+<!-- Layout responsivo com 2 colunas principais (3ª coluna desativada) -->
+
+<div id="atendimentoDiv" class="flex flex-col items-center justify-center w-full h-full overflow-hidden">
+  <div class="flex w-full items-center justify-center card p-1 h-full overflow-hidden" id="pAtendimentoDiv">
+    <!-- CONTAINER PRINCIPAL - Layout flexível que se adapta a desktop/mobile -->
+    <div class="flex flex-col lg:flex-row w-full gap-2 h-full overflow-hidden">
+
+      <!-- ========================================== -->
+      <!-- COLUNA ESQUERDA - PAINEL DE CONTROLES     -->
+      <!-- ========================================== -->
+      <!-- Controla conexões, status e listas de atendimento -->
+      <!-- Largura fixa de 1/6 da tela em desktop, largura total em mobile -->
+      <div id="atendimento-div1"
+        class="p-2 rounded shadow w-full lg:w-1/5 min-w-[260px] flex flex-col gap-2 border border-base-100 overflow-y-auto">
+        <!-- =================== -->
+        <!-- SEÇÃO PABX/TELEFONIA -->
+        <!-- =================== -->
+        <!-- Controla o registro e status do ramal SIP para ligações -->
+        <div id="atendimento-pabx-inicial" class="flex flex-col gap-2">
+          
+          <!-- TELA DE CONEXÃO - Visível quando ramal não está registrado -->
+          <div id="atendimento-pabx-inicial-connect" class="">
+            <!-- Seletor de ramal disponível -->
+            <div class="relative">
+              <select class="select select-bordered w-full pt-4 mb-2" id="atendimento-pabx-ramal-list" name="ramal">
+                <option value="" disabled selected>Selecione</option>
+                <option value="padrao" selected>1001</option>
+              </select>
+              <label for="atendimento-pabx-ramal-list" class="absolute left-4 top-2 text-xs text-gray-500">Ramal</label>
+            </div>
+            
+            <!-- Botão para iniciar registro SIP -->
+            <button id="atendimento-btn-registrar-ramal" class="btn btn-sm btn-success w-full mb-2">Registrar
+              Ramal</button>
+          </div>
+
+          <!-- TELA DE STATUS - Visível quando ramal está registrado -->
+          <div id="atendimento-pabx-status-connect" class="flex flex-col gap-2 hidden">
+            <!-- Container dinâmico para controles de status (Disponível/Pausa) -->
+            <div id="atendimento-status-container"></div>
+
+            <!-- <div class="relative">
+              <select class="select select-bordered w-full pt-4 mb-2 " id="atendimento-status-select" name="ramal">
+                <option value="" disabled selected>Selecione</option>
+                <option value="padrao" selected>Pausa</option>
+              </select>
+              <label for="atendimento-status-select" class="absolute left-4 top-2 text-xs text-gray-500">
+                <div class="flex items-center gap-2">
+                  <span class="text-success ml-1" id="atendimento-status-badge">●</span>
+                  <span id="atendimento-status-ramal">1001</span>
+                </div>
+              </label>
+            </div> -->
+          </div>
+        </div>
+
+        <hr class="border-neutral">
+
+        <!-- ========================= -->
+        <!-- SEÇÃO OMNICHANNEL         -->
+        <!-- ========================= -->
+        <!-- Controla conexão com WebSocket para atendimento multicanal -->
+        <!-- (WhatsApp, Chat, Email, etc.) -->
+        <div id="atendimento-omni-inicial">
+          
+          <!-- TELA DE CONEXÃO OMNI - Visível quando não conectado ao WebSocket -->
+          <div id="atendimento-omni-inicial-connect">
+            <!-- Status da conexão multicanal -->
+            <div class="relative">
+              <select class="select select-bordered w-full pt-4 mb-2" id="atendimento-aw-registro" name="multicanais"
+                disabled>
+                <option value="" disabled selected>Desconectado</option>
+              </select>
+              <label for="atendimento-aw-registro"
+                class="absolute left-4 top-2 text-xs text-gray-500">Multicanais</label>
+            </div>
+            
+            <!-- Botão para conectar ao sistema omnichannel -->
+            <button id="atendimento-omni-btn-connect" class="btn btn-sm btn-success w-full mb-2">Registrar
+              Multicanais</button>
+          </div>
+          
+          <!-- TELA DE STATUS OMNI - Visível quando conectado -->
+          <div id="atendimento-omni-content-connect" class="flex flex-col gap-2">
+            <!-- Container dinâmico para controles de status omnichannel -->
+            <div id="atendimento-omni-status-container"></div>
+            <!-- <div class="relative">
+              <select class="select select-bordered w-full pt-4 mb-2 " id="atendimento-omni-status-select" name="omni-status">
+                <option value="" disabled selected>Selecione</option>
+                <option value="padrao" selected>Pausa</option>
+              </select>
+              <label for="atendimento-omni-status-select" class="absolute left-4 top-2 text-xs text-gray-500">
+                <div class="flex items-center gap-2">
+                  <span class="text-success ml-1" id="atendimento-omni-status-badge">●</span>
+                  <span id="atendimento-status-user">pre.sub</span>
+                </div>
+              </label>
+            </div> -->
+          </div>
+        </div>
+
+        <hr class="border-neutral">
+
+        <!-- ========================= -->
+        <!-- SEÇÃO DE LIGAÇÕES ATIVAS  -->
+        <!-- ========================= -->
+        <!-- Lista dinâmica de chamadas telefônicas em andamento -->
+        <div class="pt-2" id="atendimento-active-in-voice">
+          
+          <!-- Cabeçalho com título e menu de opções -->
+          <div class="flex items-center justify-between">
+            <label class="block text-sm font-semibold mb-2">Ligações 
+            </label>
+            
+            <!-- Menu dropdown para ações adicionais -->
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-circle">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </div>
+              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                <li><button onclick="window.bashAtendimentoOmni.mostrarHistorico('685edaa42bced701963c5bfd')">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Histórico
+                  </button></li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- LISTA DINÂMICA DE LIGAÇÕES - Controlada pelo pabx.js -->
+          <ul class="list divide-y divide-neutral rounded-box shadow-sm bg-base-100">
+            
+            <!-- ITEM: LIGAÇÃO EM CURSO - Visível durante chamada ativa -->
+            <li id="atendimento-li-ligacao" class="hidden flex flex-row items-center p-3 gap-3 bg-base-200 rounded-lg">
+              <!-- Info da ligação -->
+              <div class="flex flex-col flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-phone-volume text-success text-sm animate-pulse"></i>
+                  <span id="atendimento-li-ligacao-curso-telefone" class="font-semibold text-sm truncate">Telefone</span>
+                </div>
+                <span class="atendimento-tempo text-xs text-gray-400 mt-0.5"></span>
+              </div>
+              
+              <!-- Controles da ligação -->
+              <div class="flex gap-1.5">
+                <button id="atendimento-btn-li-unmute"
+                  class="atendimento-btn-mute btn btn-circle btn-primary btn-sm tooltip tooltip-primary"
+                  data-tip="Mutar" data-state="muted">
+                  <i class="fa-solid fa-microphone text-xs"></i>
+                </button>
+                <button id="atendimento-btn-li-desligar" class="btn btn-circle btn-error btn-sm tooltip tooltip-error"
+                  data-tip="Desligar">
+                  <i class="fa-solid fa-phone-slash text-xs"></i>
+                </button>
+              </div>
+            </li>
+            
+            <!-- ITEM: LIGAÇÃO RECEBENDO - Visível quando há chamada entrante -->
+            <li id="atendimento-li-ligacao-atender" class="hidden flex flex-row items-center p-3 gap-3 bg-base-200 rounded-lg">
+              <!-- Info da ligação entrante -->
+              <div class="flex flex-col flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-phone-volume text-warning text-sm animate-bounce"></i>
+                  <span id="atendimento-li-ligacao-atender-telefone" class="font-semibold text-sm truncate"></span>
+                </div>
+                <span class="text-xs text-warning mt-0.5">Chamada recebida</span>
+              </div>
+              
+              <!-- Controles de chamada entrante -->
+              <div class="flex gap-1.5">
+                <button id="atendimento-btn-li-atender"
+                  class="btn btn-circle btn-success btn-sm tooltip tooltip-success" data-tip="Atender">
+                  <i class="fa-solid fa-phone text-xs"></i>
+                </button>
+                <button id="atendimento-btn-li-rejeitar" class="btn btn-circle btn-error btn-sm tooltip tooltip-error"
+                  data-tip="Rejeitar">
+                  <i class="fa-solid fa-phone-slash text-xs"></i>
+                </button>
+              </div>
+            </li>
+            
+            <!-- ITEM: DISCAGEM - Botão para abrir teclado numérico -->
+            <li id="atendimento-li-discar" class="list-row hidden">
+              <button id="atendimento-btn-discar" class="btn btn-neutral w-full">
+                <i class="fa-solid fa-phone-volume text-xl"></i>
+                Discar
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <hr class="border-neutral">
+
+        <!-- ================================ -->
+        <!-- SEÇÃO DE ATENDIMENTOS OMNICHANNEL -->
+        <!-- ================================ -->
+        <!-- Lista dinâmica de atendimentos multicanal (WhatsApp, Chat, etc.) -->
+        <!-- Controlada pelo omni.js via WebSocket -->
+        <div class="pt-2 hidden" id="atendimento-active-in-omni">
+          <label class="block text-sm font-semibold mb-2">Atendimentos</label>
+          
+          <!-- Lista populada dinamicamente com conversas ativas -->
+          <ul class="atendimento-list-omni list divide-y divide-neutral rounded-box shadow-sm bg-base-100">
+            <!-- Itens são inseridos dinamicamente via JavaScript -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- ============================================= -->
+      <!-- COLUNA CENTRAL - ÁREA DE ATENDIMENTO ATIVO  -->
+      <!-- ============================================= -->
+      <!-- Área principal onde acontece a interação com o cliente -->
+      <!-- Flexível, ocupa o espaço restante da tela -->
+      <div id="div2" class="bg-base-300 p-4 rounded shadow w-full lg:flex-1 min-w-[500px] flex flex-col gap-4 border border-base-100 overflow-hidden">
+        <!-- ================================ -->
+        <!-- CARD DE ATENDIMENTO TELEFÔNICO   -->
+        <!-- ================================ -->
+        <!-- Exibido durante ligações ativas, controlado pelo pabx.js -->
+        <div id="atendimento-card" class="bg-base-200 rounded-box p-4 shadow-lg hidden">
+          
+          <!-- ELEMENTO DE ÁUDIO - Para reprodução do áudio da ligação -->
+          <div style="display: none;" id="audioCall"><audio id="remoteAudio" autoplay></audio></div>
+
+          <!-- CABEÇALHO DA CHAMADA - Informações básicas do atendimento -->
+          <div id="atendimento-card-header" class="bg-base-200 rounded-box p-4 shadow-lg ">
+            <div class="flex items-start gap-4 w-full ">
+              
+              <!-- AVATAR E CRONÔMETRO -->
+              <div class="flex flex-col items-center">
+                <!-- Avatar genérico do cliente -->
+                <div
+                  class="w-16 h-16 md:w-24 md:h-24 bg-base-300 rounded-full flex items-center justify-center text-3xl md:text-4xl text-base-content/70">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+                
+                <!-- Contador de tempo da ligação -->
+                <span id="atendimento-tempo" class="mt-2 text-xl font-mono"></span>
+              </div>
+
+              <!-- INFORMAÇÕES DA LIGAÇÃO -->
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-lg md:text-xl truncate">Fila:</h3>
+                
+                <!-- Número do telefone -->
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="font-semibold text-sm md:text-base">Telefone:</span>
+                  <span class="text-sm md:text-base"></span>
+                </div>
+                
+                <!-- Protocolo do atendimento -->
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="font-semibold text-sm md:text-base">Protocolo:</span>
+                  <span class="text-sm md:text-base"></span>
+                </div>
+              </div>
+
+              <!-- MENU DE OPÇÕES -->
+              <button class="btn btn-circle btn-ghost self-start">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- ======================================= -->
+          <!-- ÁREA DE CONTEÚDO DINÂMICO              -->
+          <!-- ======================================= -->
+          <!-- Container que alterna entre diferentes interfaces conforme necessário -->
+          <div id="atendimento-dynamic-content"
+            class="bg-base-200 rounded-box p-4 shadow-lg flex-1 flex items-center justify-center hidden">
+            
+            <!-- TECLADO NUMÉRICO - Para discagem durante ligação ativa -->
+            <div id="atendimento-numpad" class="atendimento-dynamic-item w-full max-w-xs hidden">
+              
+              <!-- Display do número sendo digitado -->
+              <div class="flex justify-between items-center border-b border-base-300 pb-2 mb-4">
+                <span id="atendimento-dial-display" class="tracking-widest text-xl font-mono text-base-content"></span>
+                
+                <!-- Botão para apagar último dígito -->
+                <button onclick="removerUltimoDigito()" class="btn btn-xs btn-ghost">
+                  <i class="fa-solid fa-delete-left"></i>
+                </button>
+              </div>
+
+              <!-- GRADE DO TECLADO NUMÉRICO -->
+              <div class="grid grid-cols-3 gap-3">
+                <button data-dtmf='1' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">1</button>
+                <button data-dtmf='2' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">2</button>
+                <button data-dtmf='3' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">3</button>
+                <button data-dtmf='4' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">4</button>
+                <button data-dtmf='5' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">5</button>
+                <button data-dtmf='6' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">6</button>
+                <button data-dtmf='7' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">7</button>
+                <button data-dtmf='8' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">8</button>
+                <button data-dtmf='9' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">9</button>
+                <button data-dtmf='*' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">*</button>
+                <button data-dtmf='0' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">0</button>
+                <button data-dtmf='#' class="btn btn-ghost h-12 text-lg atendimento-btn-dtmf">#</button>
+              </div>
+
+              <!-- Botão para realizar ligação -->
+              <div class="flex justify-center mt-4">
+                <button onclick="discar()" class="btn btn-success w-full py-3 text-lg">
+                  <i class="fa-solid fa-phone mr-2"></i> Ligar
+                </button>
+              </div>
+            </div>
+            <!-- FORMULÁRIO DE CADASTRO RÁPIDO - Para novos clientes durante atendimento -->
+            <div id="atendimento-cadastro"
+              class="atendimento-dynamic-item w-full max-w-md p-6 rounded-lg shadow-md hidden">
+              
+              <!-- Formulário com campos básicos para cadastro -->
+              <form class="space-y-4" id="cadastroClienteF" action="javascript:cadastroCliente()">
+                
+                <!-- Campo CPF -->
+                <div class="relative">
+                  <input type="text" class="input input-bordered w-full pt-6" id="cpfForm" placeholder="000.000.000-00"
+                    required>
+                  <label for="cpfForm" class="absolute left-4 top-2 text-xs text-gray-500">CPF</label>
+                </div>
+
+                <!-- Campo Nome -->
+                <div class="relative">
+                  <input type="text" class="input input-bordered w-full pt-6" id="nomeForm"
+                    placeholder="Albert Einstein" required>
+                  <label for="nomeForm" class="absolute left-4 top-2 text-xs text-gray-500">Nome completo</label>
+                </div>
+
+                <!-- Campo Email -->
+                <div class="relative">
+                  <input type="email" class="input input-bordered w-full pt-6" id="emailForm"
+                    placeholder="name@example.com" required>
+                  <label for="emailForm" class="absolute left-4 top-2 text-xs text-gray-500">Email</label>
+                </div>
+
+                <!-- Campo UF -->
+                <div class="relative">
+                  <input type="text" class="input input-bordered w-full pt-6" id="UFForm" placeholder="SC" required>
+                  <label for="UFForm" class="absolute left-4 top-2 text-xs text-gray-500">UF</label>
+                </div>
+
+                <!-- Botão de submissão -->
+                <div class="flex justify-end gap-2 pt-2">
+                  <button class="btn btn-success btn-sm" type="submit">
+                    Cadastrar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <!-- ====================================== -->
+        <!-- CARD DE ATENDIMENTO OMNICHANNEL       -->
+        <!-- ====================================== -->
+        <!-- Interface para conversas de WhatsApp, Chat, Email -->
+        <!-- Controlado pelo omni.js, conteúdo carregado dinamicamente -->
+        <div id="omni-atendimento-card" class="bg-base-200 rounded-box p-1 shadow-lg hidden flex flex-col flex-1 overflow-hidden">
+          <!-- Conteúdo inserido dinamicamente via JavaScript -->
+        </div>
+      </div>
+      
+      <div id="container_flow_atendimento" class="w-full lg:w-[420px] xl:w-[460px] rounded shadow border border-base-100 bg-base-300 p-2">
+        <div class="bg-base-100 rounded-box shadow-sm h-full min-h-[80vh] flex flex-col overflow-hidden">
+          <div class="border-b border-base-300 p-3">
+            <h3 class="font-semibold text-base">Painel do Atendimento</h3>
+            <p class="text-xs text-base-content/60">Histórico e Classificação</p>
+          </div>
+
+          <div class="tabs tabs-box bg-base-200 rounded-none p-2 gap-2 border-b border-base-300">
+            <button id="af-bt-historico" class="tab tab-sm tab-lifted flex-1" type="button">
+              <i class="fas fa-history mr-2"></i>Histórico
+            </button>
+            <button id="af-bt-classificacao" class="tab tab-sm tab-lifted flex-1" type="button">
+              <i class="fas fa-clipboard-check mr-2"></i>Classificação
+            </button>
+          </div>
+
+          <div id="af-tab-default" class="flex-1 p-4 overflow-y-auto">
+            <div class="h-full flex flex-col items-center justify-center text-center text-base-content/60">
+              <i class="fas fa-columns text-3xl mb-3"></i>
+              <p class="font-medium">Selecione um atendimento</p>
+              <p class="text-sm mt-1">Use as abas para ver o histórico do cliente e classificar o atendimento.</p>
+            </div>
+          </div>
+
+          <div id="af-div-historico-cliente" class="hidden flex-1 overflow-y-auto"></div>
+          <div id="af-div-classificacao" class="hidden flex-1 overflow-y-auto"></div>
+        </div>
+
+        <div id="af-div-sistema-externo" class="border-base-300 bg-base-100 w-full min-h-[80vh] hidden">
+          <iframe id="iframe-sistema-externo" src="" class="w-full h-full min-h-[80vh] border-0"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ================================================ -->
+<!-- SCRIPTS PRINCIPAIS DO SISTEMA DE ATENDIMENTO   -->
+<!-- ================================================ -->
+
+<!-- OMNI.JS - Sistema Omnichannel (WhatsApp, Chat, Email) -->
+<!-- Conecta via WebSocket, gerencia filas e status -->
+<script src="/sessao/atendimentos/omni.js?v=7"></script>
+
+
+<!-- PABX.JS - Sistema Telefônico -->
+<!-- Controla registro SIP, ligações e interface telefônica -->
+<script src="/sessao/atendimentos/pabx.js?v=0"></script>
+
+<!-- SIP.MIN.JS - Biblioteca WebRTC/SIP -->
+<!-- Biblioteca externa para comunicação telefônica -->
+<script src="/js/sip/lib/sip.min.js?v=4"></script>

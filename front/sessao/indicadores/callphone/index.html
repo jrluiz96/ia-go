@@ -1,0 +1,190 @@
+
+    <div class="container mx-auto p-4">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-base-content">
+                <i class="fas fa-chart-line mr-2"></i>
+                Indicadores CallPhone
+            </h1>
+            <p class="text-base-content/60 mt-1">Dashboard de monitoria e indicadores</p>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card bg-base-100 shadow-md mb-6">
+            <div class="card-body">
+                <div class="flex flex-wrap items-end gap-4">
+                    <!-- Select Empresa -->
+                    <div class="form-control flex-1 min-w-[200px]">
+                        <label class="label">
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-building mr-1"></i>
+                                Empresa
+                            </span>
+                        </label>
+                        <select id="select-empresa" class="select select-bordered w-full">
+                            <option value="">Carregando empresas...</option>
+                        </select>
+                    </div>
+
+                    <!-- Período Rápido -->
+                    <div class="form-control flex-1 min-w-[200px]">
+                        <label class="label">
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-calendar mr-1"></i>
+                                Período
+                            </span>
+                        </label>
+                        <div class="btn-group w-full">
+                            <button class="btn btn-sm btn-outline flex-1" data-period="1">Hoje</button>
+                            <button class="btn btn-sm btn-outline flex-1" data-period="2">Semana</button>
+                            <button class="btn btn-sm btn-outline flex-1" data-period="3">Mês</button>
+                            <button class="btn btn-sm btn-outline flex-1" data-period="4">30 Dias</button>
+                            <button class="btn btn-sm btn-outline flex-1" data-period="5">Customizar</button>
+                        </div>
+                    </div>
+
+                    <!-- Botão Buscar -->
+                    <div class="form-control">
+                        <button id="btn-buscar" class="btn btn-primary gap-2">
+                            <i class="fas fa-search"></i>
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Datas Customizadas (Separada) -->
+                <div class="flex flex-wrap items-end gap-4 mt-4 hidden" id="container-datas-custom">
+                    <!-- Data Início (Custom) -->
+                    <div class="form-control flex-1 min-w-[150px]" id="container-data-inicio">
+                        <label class="label">
+                            <span class="label-text font-semibold">Data Início</span>
+                        </label>
+                        <input type="date" id="data-inicio" class="input input-bordered w-full" />
+                    </div>
+
+                    <!-- Data Fim (Custom) -->
+                    <div class="form-control flex-1 min-w-[150px]" id="container-data-fim">
+                        <label class="label">
+                            <span class="label-text font-semibold">Data Fim</span>
+                        </label>
+                        <input type="date" id="data-fim" class="input input-bordered w-full" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicadores Principais -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <!-- Total de Ligações -->
+            <div class="stats shadow">
+                <div class="stat">
+                    <div class="stat-figure text-primary">
+                        <i class="fas fa-phone text-2xl"></i>
+                    </div>
+                    <div class="stat-title text-sm">Total de Ligações</div>
+                    <div class="stat-value text-primary text-2xl" id="total">-</div>
+                    <div class="stat-desc text-xs">Todas as ligações</div>
+                </div>
+            </div>
+
+            <!-- Ligações Atendidas -->
+            <div class="stats shadow">
+                <div class="stat">
+                    <div class="stat-figure text-success">
+                        <i class="fas fa-check-circle text-2xl"></i>
+                    </div>
+                    <div class="stat-title text-sm">Atendidas</div>
+                    <div class="stat-value text-success text-2xl" id="atendida">-</div>
+                    <div class="stat-desc text-xs" id="atendida-percent">-</div>
+                </div>
+            </div>
+
+            <!-- Ligações Abandonadas -->
+            <div class="stats shadow">
+                <div class="stat">
+                    <div class="stat-figure text-error">
+                        <i class="fas fa-phone-slash text-2xl"></i>
+                    </div>
+                    <div class="stat-title text-sm">Abandonadas</div>
+                    <div class="stat-value text-error text-2xl" id="abandono">-</div>
+                    <div class="stat-desc text-xs" id="abandono-percent">-</div>
+                </div>
+            </div>
+
+            <!-- TMA - Tempo Médio de Atendimento -->
+            <div class="stats shadow">
+                <div class="stat">
+                    <div class="stat-figure text-info">
+                        <i class="fas fa-clock text-2xl"></i>
+                    </div>
+                    <div class="stat-title text-sm">TMA</div>
+                    <div class="stat-value text-info text-2xl" id="tma">-</div>
+                    <div class="stat-desc text-xs">Tempo Médio Atendimento</div>
+                </div>
+            </div>
+
+            <!-- TME - Tempo Médio de Espera -->
+            <div class="stats shadow">
+                <div class="stat">
+                    <div class="stat-figure text-warning">
+                        <i class="fas fa-hourglass-half text-2xl"></i>
+                    </div>
+                    <div class="stat-title text-sm">TME</div>
+                    <div class="stat-value text-warning text-2xl" id="tme">-</div>
+                    <div class="stat-desc text-xs">Tempo Médio Espera</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabelas -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Nível de Serviço -->
+            <div class="card bg-base-100 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <div class="flex justify-between items-center w-full">
+                            <div>
+                                <i class="fas fa-chart-bar mr-2"></i>
+                                Nível de Serviço (SLA)
+                            </div>
+                            <div class="slaTitle">
+
+                            </div>
+                        </div>
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <div id="slaServico">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pesquisa de Satisfação -->
+            <div class="card bg-base-100 shadow-md">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-star mr-2"></i>
+                        Pesquisa de Satisfação
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <div id="psqSatisfacao">
+                           
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="hidden fixed inset-0 bg-base-300/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body items-center text-center">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <p class="mt-4 font-semibold">Carregando indicadores...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/sessao/indicadores/callphone/js.js?v=4"></script>

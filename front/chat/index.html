@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat DetranRS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/fonts/font-awesome/7.1.0/css/all.min.css" />
+
+    <!-- Estilo do bot -->
+  <link rel="stylesheet" href="/chat/style.css?v=19" type="text/css" />
+
+  <style>
+    :root {
+      --cor-laranja: #f6811d;
+      --cinza-escuro: #4a4a4a;
+      --cinza-claro: #eeeeee;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      font-family: Arial, sans-serif;
+      background-color: #fff;
+      color: #000;
+    }
+
+    .barra-topo-escura {
+      height: 30px;
+      background-color: var(--cinza-escuro);
+    }
+
+    .barra-topo-clara {
+      height: 30px;
+      background-color: var(--cinza-claro);
+    }
+
+    header {
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 30px;
+      height: 100px;
+    }
+
+    header img {
+      height: 60px;
+    }
+
+    .acessibilidade-btn {
+      background-color: #555;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .faixa-laranja {
+      height: 5px;
+      background-color: var(--cor-laranja);
+    }
+
+    .hero {
+      background-size: cover;
+      background-position: center;
+      height: calc(100vh - 165px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 60px;
+      padding-bottom: 20px;
+      text-align: center;
+    }
+
+    .hero-texto {
+      font-size: 36px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.6);
+    }
+
+    @media (max-width: 768px) {
+      .hero-texto {
+        font-size: 24px;
+        padding: 0 10px;
+      }
+
+      header {
+        flex-direction: column;
+        height: auto;
+      }
+
+      .acessibilidade-btn {
+        margin-top: 10px;
+      }
+    }
+
+    .acessibilidade-contraste body,
+    .acessibilidade-contraste html {
+      background-color: #000;
+      color: #fff;
+    }
+
+    .acessibilidade-contraste .hero-texto {
+      text-shadow: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Barras superiores -->
+  <div class="barra-topo-escura"></div>
+  <div class="barra-topo-clara"></div>
+
+  <!-- Cabeçalho com logo -->
+  <header>
+    <img src="logo.png" alt="Logo DetranRS" />
+  </header>
+
+  <!-- Faixa laranja abaixo do cabeçalho -->
+  <div class="faixa-laranja"></div>
+
+  <!-- Seção principal com imagem e texto -->
+  <section class="hero">
+    <div class="hero-texto">
+      Olá! Seja bem-vindo ao chat do DetranRS.
+    </div>
+  </section>
+
+  <!-- Scripts do bot -->
+  <script src="/js/jquery.js?v=4"></script>
+  <script src="/chat/js.js?v=17"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      wbStartChat('', '27d7c6f1-8a36-488d-9850-cf3353f97e40');
+    });
+  </script>
+
+  <!-- Contraste -->
+  <script>
+    function alternarContraste() {
+      document.body.classList.toggle('acessibilidade-contraste');
+      document.documentElement.classList.toggle('acessibilidade-contraste');
+    }
+  </script>
+
+  <!-- Script para alterar imagem de fundo aleatoriamente -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const imagens = [
+        'capa-carros.jpg',
+        'pedestres.jpg',
+        'moto.jpg',
+        'asfalto.jpg',
+        'carros e motos.jpg'
+      ];
+      const imagemAleatoria = imagens[Math.floor(Math.random() * imagens.length)];
+      const hero = document.querySelector('.hero');
+      if (hero) {
+        hero.style.backgroundImage = `url('${imagemAleatoria}')`;
+      }
+    });
+  </script>
+</body>
+</html>

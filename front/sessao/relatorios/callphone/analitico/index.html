@@ -1,0 +1,314 @@
+<!-- Relatório Analítico -->
+<div class="space-y-6">
+  
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <div class="stats-card stats shadow">
+      <div class="stat">
+        <div class="stat-figure text-primary">
+          <i class="fas fa-chart-line text-3xl"></i>
+        </div>
+        <div class="stat-title">Volume Total</div>
+        <div class="stat-value text-primary">2.547</div>
+        <div class="stat-desc">Ligações no período</div>
+      </div>
+    </div>
+
+    <div class="stats-card stats shadow">
+      <div class="stat">
+        <div class="stat-figure text-success">
+          <i class="fas fa-percentage text-3xl"></i>
+        </div>
+        <div class="stat-title">Taxa Atendimento</div>
+        <div class="stat-value text-success">82.6%</div>
+        <div class="stat-desc">Meta: 80%</div>
+      </div>
+    </div>
+
+    <div class="stats-card stats shadow">
+      <div class="stat">
+        <div class="stat-figure text-info">
+          <i class="fas fa-stopwatch text-3xl"></i>
+        </div>
+        <div class="stat-title">TME Médio</div>
+        <div class="stat-value text-info">45s</div>
+        <div class="stat-desc">Tempo Médio de Espera</div>
+      </div>
+    </div>
+
+    <div class="stats-card stats shadow">
+      <div class="stat">
+        <div class="stat-figure text-warning">
+          <i class="fas fa-star text-3xl"></i>
+        </div>
+        <div class="stat-title">Satisfação</div>
+        <div class="stat-value text-warning">4.8</div>
+        <div class="stat-desc">De 5.0 estrelas</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Período de Análise -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg mb-4">
+        <i class="fas fa-calendar-alt"></i>
+        Período de Análise
+      </h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Data Início</span>
+          </label>
+          <input type="date" class="input input-bordered" id="data-inicio-analitico">
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Data Fim</span>
+          </label>
+          <input type="date" class="input input-bordered" id="data-fim-analitico">
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Agrupamento</span>
+          </label>
+          <select class="select select-bordered" id="agrupamento">
+            <option value="hora">Por Hora</option>
+            <option value="dia">Por Dia</option>
+            <option value="semana">Por Semana</option>
+            <option value="mes">Por Mês</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Fila</span>
+          </label>
+          <select class="select select-bordered">
+            <option value="">Todas</option>
+            <option value="vendas">Vendas</option>
+            <option value="suporte">Suporte</option>
+            <option value="cobranca">Cobrança</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label opacity-0">-</label>
+          <button class="btn btn-primary gap-2">
+            <i class="fas fa-sync-alt"></i>
+            Atualizar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    
+    <!-- Gráfico de Volume -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg mb-4">
+          <i class="fas fa-chart-area"></i>
+          Volume de Ligações por Hora
+        </h3>
+        <div class="h-80 flex items-center justify-center bg-base-200 rounded-lg">
+          <div class="text-center text-base-content/60">
+            <i class="fas fa-chart-line text-6xl mb-4 opacity-20"></i>
+            <p>Gráfico será renderizado aqui</p>
+            <p class="text-sm">(Chart.js, ApexCharts, etc)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráfico de Distribuição -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg mb-4">
+          <i class="fas fa-chart-pie"></i>
+          Distribuição por Status
+        </h3>
+        <div class="h-80 flex items-center justify-center bg-base-200 rounded-lg">
+          <div class="text-center text-base-content/60">
+            <i class="fas fa-chart-pie text-6xl mb-4 opacity-20"></i>
+            <p>Gráfico de Pizza</p>
+            <p class="text-sm">Atendidas, Perdidas, Ocupadas</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Métricas Detalhadas -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg mb-4">
+        <i class="fas fa-table"></i>
+        Métricas Detalhadas por Período
+      </h3>
+
+      <div class="overflow-x-auto">
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Total</th>
+              <th>Atendidas</th>
+              <th>Perdidas</th>
+              <th>Taxa Atend.</th>
+              <th>TMA</th>
+              <th>TME</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="font-semibold">08:00 - 09:00</td>
+              <td>156</td>
+              <td>128</td>
+              <td>28</td>
+              <td><span class="badge badge-success">82.1%</span></td>
+              <td>4:32</td>
+              <td>42s</td>
+            </tr>
+            <tr>
+              <td class="font-semibold">09:00 - 10:00</td>
+              <td>245</td>
+              <td>208</td>
+              <td>37</td>
+              <td><span class="badge badge-success">84.9%</span></td>
+              <td>4:15</td>
+              <td>38s</td>
+            </tr>
+            <tr class="bg-success/10">
+              <td class="font-semibold">10:00 - 11:00</td>
+              <td>312</td>
+              <td>278</td>
+              <td>34</td>
+              <td><span class="badge badge-success">89.1%</span></td>
+              <td>3:58</td>
+              <td>32s</td>
+            </tr>
+            <tr>
+              <td class="font-semibold">11:00 - 12:00</td>
+              <td>189</td>
+              <td>155</td>
+              <td>34</td>
+              <td><span class="badge badge-warning">82.0%</span></td>
+              <td>5:12</td>
+              <td>48s</td>
+            </tr>
+            <tr class="bg-error/10">
+              <td class="font-semibold">12:00 - 13:00</td>
+              <td>98</td>
+              <td>72</td>
+              <td>26</td>
+              <td><span class="badge badge-error">73.5%</span></td>
+              <td>6:20</td>
+              <td>65s</td>
+            </tr>
+            <tr>
+              <td class="font-semibold">13:00 - 14:00</td>
+              <td>178</td>
+              <td>148</td>
+              <td>30</td>
+              <td><span class="badge badge-success">83.1%</span></td>
+              <td>4:45</td>
+              <td>44s</td>
+            </tr>
+            <tr>
+              <td class="font-semibold">14:00 - 15:00</td>
+              <td>223</td>
+              <td>189</td>
+              <td>34</td>
+              <td><span class="badge badge-success">84.8%</span></td>
+              <td>4:28</td>
+              <td>40s</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="font-bold bg-base-300">
+              <td>TOTAL / MÉDIA</td>
+              <td>1,401</td>
+              <td>1,178</td>
+              <td>223</td>
+              <td><span class="badge badge-success badge-lg">84.1%</span></td>
+              <td>4:47</td>
+              <td>44s</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights e Recomendações -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    
+    <div class="card bg-success/10 border border-success">
+      <div class="card-body">
+        <h3 class="card-title text-success">
+          <i class="fas fa-thumbs-up"></i>
+          Pontos Positivos
+        </h3>
+        <ul class="space-y-2 mt-2">
+          <li class="flex items-start gap-2">
+            <i class="fas fa-check-circle text-success mt-1"></i>
+            <span>Taxa de atendimento acima da meta (82.6% vs 80%)</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fas fa-check-circle text-success mt-1"></i>
+            <span>Pico de performance entre 10h-11h com 89.1%</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fas fa-check-circle text-success mt-1"></i>
+            <span>Satisfação dos clientes em 4.8/5.0</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card bg-warning/10 border border-warning">
+      <div class="card-body">
+        <h3 class="card-title text-warning">
+          <i class="fas fa-lightbulb"></i>
+          Pontos de Atenção
+        </h3>
+        <ul class="space-y-2 mt-2">
+          <li class="flex items-start gap-2">
+            <i class="fas fa-exclamation-triangle text-warning mt-1"></i>
+            <span>Horário de almoço (12h-13h) com queda de 73.5%</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fas fa-exclamation-triangle text-warning mt-1"></i>
+            <span>TME acima de 60s no período crítico</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fas fa-exclamation-triangle text-warning mt-1"></i>
+            <span>Considerar escalar mais operadores às 12h</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.initAnaliticoReport = function() {
+    console.log('🚀 Relatório Analítico inicializado');
+    
+    // Aqui você pode inicializar bibliotecas de gráficos
+    // Exemplo: Chart.js, ApexCharts, D3.js, etc
+    
+    // initCharts();
+  };
+</script>

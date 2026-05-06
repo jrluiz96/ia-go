@@ -1,0 +1,121 @@
+<div class="space-y-6 container-fluid" id="boteria-container">
+    <!-- Cabeçalho -->
+    <div class="flex justify-between items-center">
+        <div class="text-left">
+            <h1 class="text-2xl font-bold">Gerenciamento de Jornada do Cliente</h1>
+            <p class="text-sm">Gerencie os fluxos de atendimento</p>
+        </div>
+        <div class="flex gap-2">
+            <button id="fluxos-btn-novo" class="btn btn-success">
+                <i class="fa-solid fa-plus"></i>
+                Novo Fluxo
+            </button>
+            <!-- <button id="fluxos-btn-restaurar" class="btn btn-warning">
+                <i class="fa-solid fa-trash-restore"></i>
+                Restaurar Deletados
+            </button> -->
+        </div>
+    </div>
+    <!-- Filtros -->
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title mb-4">Filtros</h2>
+            <form id="filtros-fluxos" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <!-- Empresa -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Empresa</span>
+                    </label>
+                    <select id="filtro-fluxo-empresa" name="empresa_id" class="select select-bordered w-full">
+                        <option value="">Todas as empresas</option>
+                    </select>
+                </div>
+
+                <!-- Busca por Nome -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Nome do Fluxo</span>
+                    </label>
+                    <input type="text" id="filtro-fluxo-nome" name="q" class="input input-bordered"
+                        placeholder="Digite o nome do fluxo...">
+                </div>
+                
+                <!-- Status -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Status</span>
+                    </label>
+                    <select id="filtro-fluxo-status" name="status" class="select select-bordered w-full">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="deletado">Deletado</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="button" id="fluxos-btn-limpar" class="btn btn-outline flex-1">
+                        <i class="fa-solid fa-eraser"></i>
+                        Limpar
+                    </button>
+                    <button type="submit" id="fluxos-btn-filtrar" class="btn btn-primary flex-1">
+                        <i class="fa-solid fa-search"></i>
+                        Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela Fluxos -->
+    <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-0">
+            <!-- Loading -->
+            <div id="fluxos-loading" class="hidden p-8">
+                <progress class="progress progress-primary w-full"></progress>
+                <p class="text-center mt-2">Carregando fluxos...</p>
+            </div>
+
+            <!-- Tabela -->
+            <div id="fluxos-data-container">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th class="cursor-pointer" data-sort="nome">
+                                Nome do Fluxo
+                                <i class="fas fa-sort ml-1"></i>
+                            </th>
+                            <th>Empresa</th>
+                            <th>Status</th>
+                            <th>Última Atualização</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fluxos-tbody">
+                        <!-- Dados serão inseridos aqui -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            <div id="fluxos-pagination-container" class="p-4 border-t">
+                <!-- Paginação será inserida aqui -->
+            </div>
+        </div>
+    </div>
+
+    <div id="ura"></div>
+</div>
+
+<div id="ura-fluxograma" class="hidden">
+    <div id="conteudo-fluxograma">
+        <!-- Conteúdo do fluxograma será carregado aqui: ./fluxo.html -->
+    </div>
+</div>
+
+<!-- Container para modais -->
+<div id="fluxos-modal-container"></div>
+
+<!-- Scripts necessários -->
+<script src="/js/modal.js?v=4"></script>
+<script src="/js/paginacao.js?v=4"></script>
+<script src="/sessao/gestao/administrativo/construtor/js.js?v=4"></script>

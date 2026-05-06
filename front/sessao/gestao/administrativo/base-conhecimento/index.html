@@ -1,0 +1,94 @@
+<div class="space-y-6 container-fluid" id="base-conhecimento-container">
+    <!-- Cabeçalho -->
+    <div class="flex justify-between items-center">
+        <div class="text-left">
+            <h1 class="text-2xl font-bold">Base de Conhecimento</h1>
+            <p class="text-sm">Gerencie artigos, FAQs e documentação para IA</p>
+        </div>
+        <div class="flex gap-2">
+            <button id="kb-btn-novo" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i>
+                Novo Artigo
+            </button>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-primary/10 p-3 rounded-lg">
+                        <i class="fa-solid fa-book text-primary text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Total de Artigos</p>
+                        <p class="text-2xl font-bold" id="kb-stat-total">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-success/10 p-3 rounded-lg">
+                        <i class="fa-solid fa-check-circle text-success text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Ativos</p>
+                        <p class="text-2xl font-bold" id="kb-stat-ativos">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-info/10 p-3 rounded-lg">
+                        <i class="fa-solid fa-robot text-info text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Usos pela IA</p>
+                        <p class="text-2xl font-bold" id="kb-stat-usos">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-warning/10 p-3 rounded-lg">
+                        <i class="fa-solid fa-star text-warning text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Taxa de Sucesso</p>
+                        <p class="text-2xl font-bold" id="kb-stat-efetividade">0%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title mb-4">Filtros</h2>
+            <div id="kb-filtros"></div>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-0">
+            <div id="kb-loading" class="hidden p-8"></div>
+            <div id="kb-tabela-container"></div>
+            <div id="kb-pagination-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Container para modais -->
+<div id="kb-modal-container"></div>
+
+<!-- Scripts -->
+<script src="/sessao/gestao/administrativo/base-conhecimento/js.js?v=1.0.2"></script>
