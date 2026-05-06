@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IA-GO — Automação Inteligente</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">IA</div>
+    <span class="brand-name">IA-GO</span>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#criar" class="nav-item active" data-view="criar">
+      <span class="nav-icon">✦</span> Criar Bot
+    </a>
+    <a href="#bots" class="nav-item" data-view="bots">
+      <span class="nav-icon">⚙</span> Meus Bots
+    </a>
+    <a href="#runs" class="nav-item" data-view="runs">
+      <span class="nav-icon">▶</span> Execuções
+    </a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<main class="main-content">
+  <header class="topbar">
+    <div class="topbar-title" id="topbar-title">Criar Bot</div>
+    <div class="topbar-actions">
+      <span class="status-dot healthy" id="api-status" title="Status da API"></span>
+    </div>
+  </header>
+
+  <div class="view-container" id="view-container">
+    <!-- Views carregadas dinamicamente -->
+  </div>
+</main>
+
+<!-- Toast -->
+<div class="toast-area" id="toast-area"></div>
+
+<!-- Templates -->
+<template id="tpl-criar">
+  <div class="view view-criar">
+    <div class="card form-card">
+      <h2 class="card-title">Nova Automação</h2>
+      <p class="card-subtitle">Descreva em linguagem natural o que você quer automatizar.</p>
+
+      <form id="form-criar" autocomplete="off">
+        <div class="form-section">
+          <label class="label">Nome do bot <span class="required">*</span></label>
+          <input type="text" name="bot_name" class="input" placeholder="Ex: Coleta de relatório de vendas" required>
+        </div>
+
+        <div class="form-section">
+          <label class="label">Descrição <span class="required">*</span></label>
+          <textarea name="description" class="input textarea" rows="3"
+            placeholder="Descreva o que o bot deve fazer, qual sistema ele vai acessar, e o que deve coletar."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-section">
+            <label class="label">URL base do sistema <span class="required">*</span></label>
+            <input type="url" name="base_url" class="input" placeholder="https://sistema.exemplo.com.br">
+          </div>
+          <div class="form-section">
+            <label class="label">Ambiente</label>
+            <select name="ambiente" class="input select">
+              <option value="homolog">Homologação</option>
+              <option value="prod">Produção</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-section">
+            <label class="label">Tipo de autenticação <span class="required">*</span></label>
+            <select name="auth_type" class="input select">
+              <option value="">Selecione...</option>
+              <option value="basic_login">Login e senha</option>
+              <option value="bearer_token">Token Bearer</option>
+              <option value="client_cert_file">Certificado digital</option>
+              <option value="windows_cert_store">Windows Cert Store</option>
+            </select>
+          </div>
+          <div class="form-section">
+            <label class="label">ID da credencial (secret_id) <span class="required">*</span></label>
+            <input type="text" name="secret_id" class="input" placeholder="Ex: PORTAL_VENDAS_CRED">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <label class="label">Objetivo da coleta <span class="required">*</span></label>
+          <input type="text" name="objetivo_coleta" class="input"
+            placeholder="Ex: Extrair relatório de vendas por período">
+        </div>
+
+        <div class="form-row">
+          <div class="form-section">
+            <label class="label">Target de execução <span class="required">*</span></label>
+            <select name="target" class="input select">
+              <option value="linux_headless">Linux Headless (Web)</option>
+              <option value="windows_host">Windows Host</option>
+              <option value="windows_gui">Windows GUI (Desktop)</option>
+            </select>
+          </div>
+          <div class="form-section">
+            <label class="label">Timeout (segundos) <span class="required">*</span></label>
+            <input type="number" name="timeout_sec" class="input" value="120" min="60" max="300">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <label class="label">Critério de sucesso <span class="required">*</span></label>
+          <input type="text" name="criterio_sucesso" class="input"
+            placeholder="Ex: Arquivo CSV baixado com ao menos 1 linha">
+        </div>
+
+        <!-- Área de perguntas pendentes -->
+        <div id="pending-box" class="pending-box hidden">
+          <div class="pending-title">⚠ Informações necessárias</div>
+          <ul id="pending-list" class="pending-list"></ul>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="btn-preview">
+            Verificar campos
+          </button>
+          <button type="submit" class="btn btn-primary" id="btn-gerar">
+            <span class="btn-label">Gerar Bot com IA</span>
+            <span class="spinner hidden" id="spinner-gerar"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Resultado da geração -->
+    <div id="result-box" class="card result-box hidden">
+      <div class="result-header">
+        <span class="result-badge success" id="result-badge">✔ Rascunho criado</span>
+        <span class="result-version" id="result-version"></span>
+      </div>
+      <div class="result-body">
+        <div class="result-row">
+          <span class="result-label">Bot ID</span>
+          <span class="result-value mono" id="result-bot-id">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Versão</span>
+          <span class="result-value mono" id="result-version-num">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Status</span>
+          <span class="result-value"><span class="badge badge-draft">draft</span></span>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button class="btn btn-sm btn-outline" id="btn-test-now">Testar agora</button>
+        <button class="btn btn-sm btn-secondary" id="btn-view-code">Ver código</button>
+      </div>
+    </div>
+
+    <!-- Modal: código gerado -->
+    <div class="modal-overlay hidden" id="modal-code">
+      <div class="modal-box large">
+        <div class="modal-header">
+          <span>Código Python gerado</span>
+          <button class="modal-close" id="btn-close-code">✕</button>
+        </div>
+        <pre class="code-block" id="code-content"></pre>
+      </div>
+    </div>
+
+    <!-- Modal: resultado do teste -->
+    <div class="modal-overlay hidden" id="modal-test">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span>Resultado do Teste Imediato</span>
+          <button class="modal-close" id="btn-close-test">✕</button>
+        </div>
+        <div id="test-result-content">
+          <div class="test-loading" id="test-loading">
+            <div class="spinner-lg"></div>
+            <p>Executando teste...</p>
+          </div>
+          <div class="test-result hidden" id="test-result">
+            <div class="result-header">
+              <span class="result-badge" id="test-badge">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Run ID</span>
+              <span class="result-value mono" id="test-run-id">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Status</span>
+              <span class="result-value" id="test-status">—</span>
+            </div>
+            <div class="result-row" id="test-error-row" style="display:none">
+              <span class="result-label">Erro</span>
+              <span class="result-value error-text" id="test-error">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-bots">
+  <div class="view view-bots">
+    <div class="view-header">
+      <h2 class="view-title">Meus Bots</h2>
+      <button class="btn btn-primary btn-sm" id="btn-novo-bot">+ Novo Bot</button>
+    </div>
+
+    <div id="bots-loading" class="loading-state">
+      <div class="spinner-lg"></div>
+    </div>
+
+    <div id="bots-empty" class="empty-state hidden">
+      <div class="empty-icon">⚙</div>
+      <p>Nenhum bot criado ainda.</p>
+      <button class="btn btn-primary btn-sm" id="btn-criar-primeiro">Criar primeiro bot</button>
+    </div>
+
+    <div id="bots-list" class="bots-grid hidden"></div>
+  </div>
+</template>
+
+<template id="tpl-bot-card">
+  <div class="bot-card">
+    <div class="bot-card-header">
+      <span class="bot-name"></span>
+      <span class="bot-status-badge"></span>
+    </div>
+    <div class="bot-description"></div>
+    <div class="bot-card-footer">
+      <span class="bot-meta"></span>
+      <div class="bot-actions">
+        <button class="btn btn-sm btn-outline" data-action="test">Testar</button>
+        <button class="btn btn-sm btn-secondary" data-action="runs">Execuções</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-runs">
+  <div class="view view-runs">
+    <div class="view-header">
+      <h2 class="view-title">Execuções</h2>
+      <div class="filter-row">
+        <select class="input select sm" id="filter-bot">
+          <option value="">Todos os bots</option>
+        </select>
+        <select class="input select sm" id="filter-status">
+          <option value="">Todos os status</option>
+          <option value="success">Sucesso</option>
+          <option value="fatal_error">Erro fatal</option>
+          <option value="retryable_error">Erro transitório</option>
+          <option value="running">Em execução</option>
+          <option value="queued">Na fila</option>
+        </select>
+        <button class="btn btn-sm btn-outline" id="btn-refresh-runs">↺ Atualizar</button>
+      </div>
+    </div>
+
+    <div id="runs-loading" class="loading-state">
+      <div class="spinner-lg"></div>
+    </div>
+
+    <div id="runs-empty" class="empty-state hidden">
+      <div class="empty-icon">▶</div>
+      <p>Nenhuma execução encontrada.</p>
+    </div>
+
+    <div id="runs-table-wrap" class="table-wrap hidden">
+      <table class="table" id="runs-table">
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Bot</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th>Início</th>
+            <th>Duração</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="runs-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Modal: eventos da run -->
+    <div class="modal-overlay hidden" id="modal-events">
+      <div class="modal-box large">
+        <div class="modal-header">
+          <span>Eventos da execução <span class="mono" id="events-run-id"></span></span>
+          <button class="modal-close" id="btn-close-events">✕</button>
+        </div>
+        <div id="events-list" class="events-list"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

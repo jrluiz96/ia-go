@@ -1,0 +1,44 @@
+# Credenciais e segredos locais
+.env.local
+.env.*.local
+*.env
+
+# Binários Go
+backend/bin/
+backend/*.exe
+
+# Dependências Go
+vendor/
+
+# Artefatos de build
+dist/
+build/
+*.out
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/settings.json
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Artefatos de teste
+coverage.out
+coverage.html
+
+# Artefatos temporários de runs
+artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
