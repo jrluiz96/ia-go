@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -72,27 +74,43 @@ func (s *Scheduler) tick(ctx context.Context) error {
 }
 
 func (s *Scheduler) dispatch(ctx context.Context, sched *domain.BotSchedule) error {
-	// Apenas versão published executa no scheduler
+	// Apenas versão published executa no scheduler.
+	// Distingue "sem versão published" (avança agenda, sem erro) de falha de infra (retorna erro).
 	published, err := s.botRepo.GetPublishedVersion(ctx, sched.BotID)
 	if err != nil {
-		log.Printf("scheduler: bot %s sem versão published, atualizando next_run_at", sched.BotID)
-		return s.schedRepo.UpdateNextRun(ctx, sched.ID, sched.CronExpr, sched.Timezone)
+		if errors.Is(err, postgres.ErrNotFound) {
+			log.Printf("scheduler: bot %s sem versão published, avançando agenda", sched.BotID)
+			return s.schedRepo.UpdateNextRun(ctx, sched.ID, sched.CronExpr, sched.Timezone)
+		}
+		return fmt.Errorf("buscar versão published bot_id=%s: %w", sched.BotID, err)
 	}
 
-	// run_id idempotente: baseado em schedule_id + janela de 1 minuto
-	// Garante que reexecuções dentro do mesmo tick não duplicam o run
+	// run_id idempotente por schedule + janela de 1 minuto.
 	now := time.Now().UTC()
 	windowMin := now.Unix() / 60
 	runID := fmt.Sprintf("run_sched_%s_%d", sched.ID.String()[:8], windowMin)
 
-	// Idempotência: se run_id já existe, avança next_run_at e sai
+	// Idempotência: só avança agenda se o run já foi despachado com sucesso.
+	// fatal_error indica falha de publish anterior — não avança para tentar novamente.
 	existing, _ := s.runRepo.GetByRunID(ctx, runID)
 	if existing != nil {
-		log.Printf("scheduler: run_id=%s já existe (idempotência), pulando dispatch", runID)
+		if existing.Status == domain.RunStatusFatalError {
+			return fmt.Errorf("run_id=%s em fatal_error, aguardando próxima janela de minuto", runID)
+		}
+		log.Printf("scheduler: run_id=%s já despachado (idempotência), avançando agenda", runID)
 		return s.schedRepo.UpdateNextRun(ctx, sched.ID, sched.CronExpr, sched.Timezone)
 	}
 
 	traceID := uuid.New().String()
+
+	// Serializa o contrato v1 da versão published para enviar na fila.
+	// O worker usa esse contrato como fonte da verdade, evitando reconstrução com defaults.
+	contractBytes, err := json.Marshal(published.ContractJSON)
+	if err != nil {
+		return fmt.Errorf("serializar contract_json bot_id=%s version=%d: %w",
+			sched.BotID, published.Version, err)
+	}
+
 	run := &domain.BotRun{
 		RunID:        runID,
 		BotID:        sched.BotID,
@@ -114,19 +132,21 @@ func (s *Scheduler) dispatch(ctx context.Context, sched *domain.BotSchedule) err
 	}
 
 	payload := queue.JobPayload{
-		RunID:      runID,
-		BotID:      sched.BotID.String(),
-		VersionID:  published.ID.String(),
-		RunType:    string(domain.RunTypeScheduled),
-		TraceID:    traceID,
-		TimeoutSec: 300,
+		RunID:        runID,
+		BotID:        sched.BotID.String(),
+		VersionID:    published.ID.String(),
+		RunType:      string(domain.RunTypeScheduled),
+		TraceID:      traceID,
+		TimeoutSec:   300,
+		ContractJSON: contractBytes,
 		Params: map[string]interface{}{
 			"schedule_id": sched.ID.String(),
 		},
 	}
 
 	if _, err := s.queueClient.Publish(ctx, queue.StreamScheduled, payload); err != nil {
-		// Marca o run como fatal_error — não ficará órfão na fila
+		// Marca o run como fatal_error. NÃO avança next_run_at:
+		// o próximo tick pode tentar novamente dentro da mesma janela de minuto.
 		_ = s.runRepo.UpdateStatus(ctx, runID, domain.RunStatusFatalError, nil)
 		return fmt.Errorf("publicar job no stream: %w", err)
 	}
@@ -134,6 +154,6 @@ func (s *Scheduler) dispatch(ctx context.Context, sched *domain.BotSchedule) err
 	log.Printf("scheduler: job despachado run_id=%s bot_id=%s version=%d",
 		runID, sched.BotID, published.Version)
 
-	// Avança next_run_at para a próxima ocorrência
+	// Avança next_run_at APENAS após publish bem-sucedido.
 	return s.schedRepo.UpdateNextRun(ctx, sched.ID, sched.CronExpr, sched.Timezone)
 }

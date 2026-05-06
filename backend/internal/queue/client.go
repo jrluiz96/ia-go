@@ -49,6 +49,9 @@ type JobPayload struct {
 	TraceID    string                 `json:"trace_id"`
 	TimeoutSec int                    `json:"timeout_sec"`
 	EnqueuedAt time.Time              `json:"enqueued_at"`
+	// ContractJSON carrega o contrato v1 completo da versão published.
+	// Quando presente, o worker usa diretamente como fonte da verdade.
+	ContractJSON json.RawMessage `json:"contract_json,omitempty"`
 }
 
 // Publish publica um job no stream especificado.

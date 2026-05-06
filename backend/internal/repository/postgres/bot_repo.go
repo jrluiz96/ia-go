@@ -3,13 +3,18 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"ia-go/backend/internal/domain"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// ErrNotFound é retornado quando um registro não existe (distinto de erro de infra).
+var ErrNotFound = errors.New("not found")
 
 type BotRepo struct {
 	db *pgxpool.Pool
@@ -151,6 +156,7 @@ func (r *BotRepo) UpdateVersionStatus(ctx context.Context, versionID uuid.UUID, 
 }
 
 // GetPublishedVersion retorna a versão published de um bot, se existir.
+// Retorna ErrNotFound se não houver versão published (distinto de erro de infra).
 func (r *BotRepo) GetPublishedVersion(ctx context.Context, botID uuid.UUID) (*domain.BotVersion, error) {
 	const q = `
 		SELECT id, bot_id, version, code_python, contract_json, status, created_by,
@@ -166,6 +172,9 @@ func (r *BotRepo) GetPublishedVersion(ctx context.Context, botID uuid.UUID) (*do
 		Scan(&v.ID, &v.BotID, &v.Version, &v.CodePython, &contractRaw,
 			&v.Status, &v.CreatedBy, &approvedBy, &publishedAt, &v.CreatedAt, &v.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 

@@ -118,29 +118,51 @@ def process_job(payload_raw: str) -> WorkerOutputV1:
     bound_log = log.bind(run_id=run_id, bot_id=bot_id)
     bound_log.info("worker.processando_job", run_type=run_type)
 
-    # Monta contrato v1 mínimo para execução
-    contract_data: dict[str, Any] = {
-        "contract_version": "1.0",
-        "run_id": run_id,
-        "bot_id": bot_id,
-        "bot_version": 1,
-        "run_type": run_type,
-        "params": params,
-        "execution_context": {
-            "timeout_sec": timeout_sec,
-            "capabilities": ["web_headless"],
-            "worker_type": "linux_headless",
-        },
-        "retry_policy": {
-            "max_attempts": 1 if run_type == "ad_hoc_test" else 3,
-            "backoff_sec": 0 if run_type == "ad_hoc_test" else 30,
-            "retry_on": "retryable_error",
-        },
-        "trace": {
-            "trace_id": trace_id,
+    # Usa contrato v1 publicado pelo backend quando disponível (scheduled runs).
+    # Fallback para contrato mínimo em ad_hoc_test (sem contrato armazenado).
+    contract_json_raw = payload.get("contract_json")
+    if contract_json_raw:
+        try:
+            if isinstance(contract_json_raw, str):
+                contract_data = json.loads(contract_json_raw)
+            else:
+                contract_data = dict(contract_json_raw)
+            # Sobrepõe campos de runtime que o backend conhece melhor
+            contract_data["run_id"] = run_id
+            contract_data["bot_id"] = bot_id
+            contract_data["run_type"] = run_type
+            contract_data["trace"] = {"trace_id": trace_id, "run_id": run_id}
+            if params:
+                contract_data["params"] = params
+            bound_log.info("worker.usando_contrato_publicado", version=contract_data.get("contract_version"))
+        except (json.JSONDecodeError, TypeError) as exc:
+            bound_log.warning("worker.falha_ao_parsear_contract_json", error=str(exc))
+            contract_json_raw = None  # fallback para mínimo
+
+    if not contract_json_raw:
+        # Contrato mínimo para execuções sem contrato armazenado (ad_hoc_test)
+        contract_data = {
+            "contract_version": "1.0",
             "run_id": run_id,
-        },
-    }
+            "bot_id": bot_id,
+            "bot_version": 1,
+            "run_type": run_type,
+            "params": params,
+            "execution_context": {
+                "timeout_sec": timeout_sec,
+                "capabilities": ["web_headless"],
+                "worker_type": "linux_headless",
+            },
+            "retry_policy": {
+                "max_attempts": 1 if run_type == "ad_hoc_test" else 3,
+                "backoff_sec": 0 if run_type == "ad_hoc_test" else 30,
+                "retry_on": "retryable_error",
+            },
+            "trace": {
+                "trace_id": trace_id,
+                "run_id": run_id,
+            },
+        }
 
     try:
         contract = ContractV1.model_validate(contract_data)
