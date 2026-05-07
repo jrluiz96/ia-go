@@ -24,6 +24,9 @@
     <a href="#runs" class="nav-item" data-view="runs">
       <span class="nav-icon">▶</span> Execuções
     </a>
+    <a href="#ops" class="nav-item" data-view="ops">
+      <span class="nav-icon">◈</span> Operacional
+    </a>
   </nav>
 </aside>
 
@@ -304,6 +307,36 @@
         </div>
         <div id="events-list" class="events-list"></div>
       </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-ops">
+  <div class="view view-ops">
+    <div class="view-header">
+      <h2 class="view-title">Painel Operacional</h2>
+      <button class="btn btn-sm btn-outline" id="btn-refresh-ops">↺ Atualizar</button>
+    </div>
+
+    <div id="ops-loading" class="loading-state">
+      <div class="spinner-lg"></div>
+    </div>
+
+    <div id="ops-error" class="ops-error hidden">
+      <span class="badge badge-error">Erro ao carregar</span>
+      <span id="ops-error-msg" class="ops-error-msg"></span>
+    </div>
+
+    <div id="ops-content" class="hidden">
+      <section class="ops-section">
+        <h3 class="ops-section-title">Runs por status</h3>
+        <div class="ops-stat-grid" id="ops-status-grid"></div>
+      </section>
+
+      <section class="ops-section">
+        <h3 class="ops-section-title">Runs travadas <span class="ops-hint">(sem heartbeat &gt; 5 min)</span></h3>
+        <div id="ops-stuck-section" class="ops-stuck-section"></div>
+      </section>
     </div>
   </div>
 </template>

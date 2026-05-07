@@ -51,6 +51,9 @@ const api = {
     return api.get(`/bots/${botID}/runs${q}`);
   },
   getEvents: (runID) => api.get(`/runs/${runID}/events`),
+
+  // Operacional
+  opsSummary: () => api.get('/ops/summary'),
 };
 
 window.api = api;

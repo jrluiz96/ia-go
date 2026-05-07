@@ -203,14 +203,25 @@ def _execute_with_retry(
 ) -> WorkerOutputV1:
     """Executa o bot respeitando retry_policy do contrato.
 
-    - retryable_error: reexecuta com backoff até max_attempts
-    - fatal_error / success: encerra imediatamente
+    - retry_on (do contrato): status que aciona reexecução com backoff
+    - qualquer outro status: encerra imediatamente
     - ad_hoc_test: max_attempts fixo em 1 (sem retry)
     """
     import runner as runner_module
 
     max_attempts = contract.retry_policy.max_attempts
     backoff_sec = contract.retry_policy.backoff_sec
+
+    # Status que aciona retry é configurável pelo contrato; fallback seguro se valor inválido
+    try:
+        retry_on_status = RunStatus(contract.retry_policy.retry_on)
+    except ValueError:
+        bound_log.warning(
+            "worker.retry_on_invalido",
+            retry_on=contract.retry_policy.retry_on,
+            fallback=RunStatus.retryable_error.value,
+        )
+        retry_on_status = RunStatus.retryable_error
 
     # ad_hoc_test nunca retenta
     if contract.run_type.value == "ad_hoc_test":
@@ -225,13 +236,14 @@ def _execute_with_retry(
                 attempt=attempt,
                 max_attempts=max_attempts,
                 backoff_sec=backoff_sec,
+                retry_on=retry_on_status.value,
             )
             time.sleep(backoff_sec)
 
         output = runner_module.run(contract, steps_fn)
         last_output = output
 
-        if output.status != RunStatus.retryable_error:
+        if output.status != retry_on_status:
             bound_log.info("worker.execucao_encerrada", status=output.status, attempt=attempt)
             return output
 

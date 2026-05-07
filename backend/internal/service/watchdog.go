@@ -9,10 +9,17 @@ import (
 	"ia-go/backend/internal/repository/postgres"
 )
 
+// WatchdogStore é a interface mínima que o Watchdog precisa do repositório de runs.
+type WatchdogStore interface {
+	GetStuckRuns(ctx context.Context, olderThan time.Duration) ([]*domain.BotRun, error)
+	UpdateStatus(ctx context.Context, runID string, status domain.RunStatus, output *domain.WorkerOutputV1) error
+	AppendEvent(ctx context.Context, event *domain.RunEvent) error
+}
+
 // Watchdog monitora runs travadas (status=running sem heartbeat recente)
 // e as encerra com fatal_error.
 type Watchdog struct {
-	runRepo          *postgres.RunRepo
+	runRepo          WatchdogStore
 	interval         time.Duration
 	heartbeatTimeout time.Duration
 }

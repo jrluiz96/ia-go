@@ -1,6 +1,7 @@
 package httpsrv
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,8 +17,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// runRepoI abstrai o RunRepo para permitir substituição em testes.
+type runRepoI interface {
+	Create(ctx context.Context, run *domain.BotRun) (*domain.BotRun, error)
+	GetByRunID(ctx context.Context, runID string) (*domain.BotRun, error)
+	ListByBotID(ctx context.Context, botID uuid.UUID, limit int) ([]*domain.BotRun, error)
+	ListEvents(ctx context.Context, runID string) ([]*domain.RunEvent, error)
+	UpdateStatus(ctx context.Context, runID string, status domain.RunStatus, output *domain.WorkerOutputV1) error
+	AppendEvent(ctx context.Context, event *domain.RunEvent) error
+	UpdateHeartbeat(ctx context.Context, runID string) error
+	CountByStatus(ctx context.Context) (map[string]int, error)
+	GetStuckRuns(ctx context.Context, olderThan time.Duration) ([]*domain.BotRun, error)
+}
+
 type RunHandler struct {
-	runRepo     *postgres.RunRepo
+	runRepo     runRepoI
 	botRepo     *postgres.BotRepo
 	queueClient *queue.Client
 }
@@ -198,13 +212,12 @@ func (h *RunHandler) ReportStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Valida status recebido
+	// Valida status recebido — retryable_error é estado interno do worker, nunca terminal
 	validStatuses := map[domain.RunStatus]bool{
-		domain.RunStatusRunning:        true,
-		domain.RunStatusSuccess:        true,
-		domain.RunStatusRetryableError: true,
-		domain.RunStatusFatalError:     true,
-		domain.RunStatusCanceled:       true,
+		domain.RunStatusRunning:    true,
+		domain.RunStatusSuccess:    true,
+		domain.RunStatusFatalError: true,
+		domain.RunStatusCanceled:   true,
 	}
 	if !validStatuses[output.Status] {
 		jsonError(w, "status inválido: "+string(output.Status), http.StatusUnprocessableEntity)

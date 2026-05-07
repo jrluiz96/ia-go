@@ -414,3 +414,61 @@ body {
   .main-content { margin-left: 0; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* ---- Operacional ---- */
+.ops-section { margin-bottom: 28px; }
+.ops-section-title {
+  font-size: 13px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: 12px;
+}
+.ops-hint { font-weight: 400; font-size: 11px; }
+
+.ops-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.ops-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: border-color var(--transition);
+}
+.ops-stat-card:hover { border-color: var(--primary); }
+.ops-stat-value {
+  font-size: 28px; font-weight: 800; color: var(--text); line-height: 1;
+}
+
+.ops-stat-card.ops-stat-success .ops-stat-value { color: var(--success); }
+.ops-stat-card.ops-stat-fatal-error .ops-stat-value,
+.ops-stat-card.ops-stat-retryable-error .ops-stat-value { color: var(--error); }
+.ops-stat-card.ops-stat-running .ops-stat-value { color: var(--primary); }
+.ops-stat-card.ops-stat-queued .ops-stat-value { color: var(--warning); }
+
+.ops-ok {
+  color: var(--success); font-size: 13px; padding: 12px 0;
+}
+
+.ops-stuck-header { margin-bottom: 10px; }
+
+.ops-stuck-list {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.ops-stuck-id {
+  background: rgba(248,113,113,.06);
+  border: 1px solid rgba(248,113,113,.2);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 12px; color: var(--error);
+}
+
+.ops-error {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 0; font-size: 13px;
+}
+.ops-error-msg { color: var(--text-muted); }

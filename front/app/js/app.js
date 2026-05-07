@@ -61,13 +61,13 @@ const state = {
 // =====================================================================
 // Router
 // =====================================================================
-const views = { criar, bots, runs };
+const views = { criar, bots, runs, ops };
 
 function navigate(view) {
   $$('.nav-item').forEach(a => {
     a.classList.toggle('active', a.dataset.view === view);
   });
-  const titles = { criar: 'Criar Bot', bots: 'Meus Bots', runs: 'Execuções' };
+  const titles = { criar: 'Criar Bot', bots: 'Meus Bots', runs: 'Execuções', ops: 'Operacional' };
   $('#topbar-title').textContent = titles[view] || 'IA-GO';
   const fn = views[view] || views.criar;
   fn();
@@ -421,6 +421,68 @@ async function openEvents(runID) {
     `).join('');
   } catch (err) {
     $('#events-list').innerHTML = `<p style="color:var(--error)">${err.message}</p>`;
+  }
+}
+
+// =====================================================================
+// View: Operacional
+// =====================================================================
+async function ops() {
+  const container = $('#view-container');
+  container.innerHTML = '';
+  const tpl = document.getElementById('tpl-ops');
+  container.appendChild(tpl.content.cloneNode(true));
+
+  $('#btn-refresh-ops').addEventListener('click', loadOps);
+  await loadOps();
+}
+
+async function loadOps() {
+  $('#ops-loading')?.classList.remove('hidden');
+  $('#ops-content')?.classList.add('hidden');
+  $('#ops-error')?.classList.add('hidden');
+
+  try {
+    const summary = await api.opsSummary();
+    $('#ops-loading')?.classList.add('hidden');
+    $('#ops-content')?.classList.remove('hidden');
+
+    // Cards de status
+    const statusOrder = ['queued', 'running', 'success', 'fatal_error', 'retryable_error', 'canceled'];
+    const counts = summary.status_counts || {};
+    const grid = $('#ops-status-grid');
+    grid.innerHTML = '';
+
+    statusOrder.forEach(s => {
+      const count = counts[s] || 0;
+      const div = document.createElement('div');
+      div.className = `ops-stat-card ops-stat-${s.replace('_', '-')}`;
+      div.innerHTML = `
+        <div class="ops-stat-value">${count}</div>
+        <div class="ops-stat-label">${statusBadge(s)}</div>
+      `;
+      grid.appendChild(div);
+    });
+
+    // Runs travadas
+    const stuckCount = summary.stuck_count || 0;
+    const stuckIDs = summary.stuck_runs || [];
+
+    const stuckSection = $('#ops-stuck-section');
+    if (stuckCount === 0) {
+      stuckSection.innerHTML = '<p class="ops-ok">✔ Nenhuma run travada detectada.</p>';
+    } else {
+      const badge = `<span class="badge badge-error">${stuckCount} travada${stuckCount > 1 ? 's' : ''}</span>`;
+      const list = stuckIDs.map(id => `<div class="ops-stuck-id mono">${id}</div>`).join('');
+      stuckSection.innerHTML = `
+        <div class="ops-stuck-header">${badge}</div>
+        <div class="ops-stuck-list">${list}</div>
+      `;
+    }
+  } catch (e) {
+    $('#ops-loading')?.classList.add('hidden');
+    $('#ops-error')?.classList.remove('hidden');
+    $('#ops-error-msg').textContent = e.message;
   }
 }
 

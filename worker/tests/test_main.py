@@ -313,6 +313,57 @@ class TestRetryPolicy:
         assert output.error_code == "ERR_MAX_ATTEMPTS"
         assert runner_module.run.call_count == 1  # apenas 1 tentativa
 
+    def test_retry_on_do_contrato_e_respeitado(self, mocker):
+        """retry_on do contrato controla qual status aciona retry (não hardcoded)."""
+        from contract import ContractV1, RetryPolicy, TraceInfo
+        import runner as runner_module
+
+        # Contrato com retry_on="fatal_error": fatal_error deve acionar retry, não encerrar
+        contract = ContractV1(
+            run_id="run_retry_on_001",
+            bot_id="bot_test",
+            bot_version=1,
+            run_type="scheduled",
+            retry_policy=RetryPolicy(max_attempts=2, backoff_sec=0, retry_on="fatal_error"),
+            trace=TraceInfo(trace_id="trace_001", run_id="run_retry_on_001"),
+        )
+
+        fatal = make_output(run_id="run_retry_on_001", status=RunStatus.fatal_error)
+        success = make_output(run_id="run_retry_on_001", status=RunStatus.success)
+        mocker.patch.object(runner_module, "run", side_effect=[fatal, success])
+        mocker.patch("time.sleep")
+
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        # Com retry_on="fatal_error", o primeiro fatal_error acionou retry e o sucesso encerrou
+        assert output.status == RunStatus.success
+        assert runner_module.run.call_count == 2
+
+    def test_retry_on_invalido_usa_fallback_retryable_error(self, mocker):
+        """retry_on com valor inválido cai no fallback retryable_error sem crashar."""
+        from contract import ContractV1, RetryPolicy, TraceInfo
+        import runner as runner_module
+
+        contract = ContractV1(
+            run_id="run_retry_fb_001",
+            bot_id="bot_test",
+            bot_version=1,
+            run_type="scheduled",
+            retry_policy=RetryPolicy(max_attempts=3, backoff_sec=0, retry_on="INVALID_STATUS"),
+            trace=TraceInfo(trace_id="trace_001", run_id="run_retry_fb_001"),
+        )
+
+        retryable = make_output(run_id="run_retry_fb_001", status=RunStatus.retryable_error)
+        mocker.patch.object(runner_module, "run", return_value=retryable)
+        mocker.patch("time.sleep")
+
+        # Não deve lançar exceção; deve usar fallback retryable_error e esgotar tentativas
+        output = worker_main._execute_with_retry(contract, MagicMock(), MagicMock())
+
+        assert output.status == RunStatus.fatal_error
+        assert output.error_code == "ERR_MAX_ATTEMPTS"
+        assert runner_module.run.call_count == 3
+
 
 # ---------------------------------------------------------------------------
 # Heartbeat thread
