@@ -57,6 +57,7 @@ class ContractV1(BaseModel):
     bot_id: str
     bot_version: int = 1
     run_type: RunType
+    base_url: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     auth_profile: AuthProfile | None = None
     execution_context: ExecutionContext = Field(default_factory=ExecutionContext)

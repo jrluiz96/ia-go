@@ -85,8 +85,23 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
 
     try:
         with sync_playwright() as pw:
-            browser: Browser = pw.chromium.launch(headless=True)
-            context = browser.new_context()
+            browser: Browser = pw.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+                extra_http_headers={
+                    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                },
+            )
+            context.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+            )
             context.set_default_timeout(timeout_ms)
             page: Page = context.new_page()
 

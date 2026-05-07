@@ -143,6 +143,7 @@ func (s *BotService) GenerateBot(ctx context.Context, req GenerateBotRequest) (*
 	// Monta contrato base
 	contractJSON := map[string]interface{}{
 		"contract_version": "1.0",
+		"base_url":         req.BaseURL,
 		"execution_context": map[string]interface{}{
 			"target":       req.Target,
 			"timeout_sec":  req.TimeoutSec,

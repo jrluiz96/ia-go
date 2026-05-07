@@ -5,6 +5,7 @@ Suporta ad_hoc_test e scheduled via contract v1.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
 import logging
 import os
@@ -184,7 +185,6 @@ def process_job(payload_raw: str) -> WorkerOutputV1:
     if generated_files:
         import sys
         import os
-        import importlib.util
 
         bot_dir = f"/tmp/bots/{bot_id.replace('-', '_')}"
         os.makedirs(bot_dir, exist_ok=True)
