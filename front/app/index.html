@@ -84,7 +84,7 @@
           <div class="form-section">
             <label class="label">Tipo de autenticação <span class="required">*</span></label>
             <select name="auth_type" class="input select">
-              <option value="">Selecione...</option>
+              <option value="none">Sem autenticação</option>
               <option value="basic_login">Login e senha</option>
               <option value="bearer_token">Token Bearer</option>
               <option value="client_cert_file">Certificado digital</option>
@@ -92,8 +92,8 @@
             </select>
           </div>
           <div class="form-section">
-            <label class="label">ID da credencial (secret_id) <span class="required">*</span></label>
-            <input type="text" name="secret_id" class="input" placeholder="Ex: PORTAL_VENDAS_CRED">
+            <label class="label">ID da credencial (secret_id)</label>
+            <input type="text" name="secret_id" class="input" placeholder="Ex: PORTAL_VENDAS_CRED (deixe vazio se sem autenticação)">
           </div>
         </div>
 
@@ -247,6 +247,7 @@
       <div class="bot-actions">
         <button class="btn btn-sm btn-outline" data-action="test">Testar</button>
         <button class="btn btn-sm btn-secondary" data-action="runs">Execuções</button>
+        <button class="btn btn-sm btn-outline" data-action="versions">Versões</button>
       </div>
     </div>
   </div>
@@ -305,7 +306,30 @@
           <span>Eventos da execução <span class="mono" id="events-run-id"></span></span>
           <button class="modal-close" id="btn-close-events">✕</button>
         </div>
+        <div id="events-output" class="events-output hidden">
+          <div class="events-output-label">Saída coletada</div>
+          <pre id="events-output-json" class="events-output-json"></pre>
+        </div>
         <div id="events-list" class="events-list"></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="modal-versions">
+      <div class="modal-box large">
+        <div class="modal-header">
+          <span id="modal-versions-title">Versões do bot</span>
+          <button class="modal-close" id="btn-close-versions">✕</button>
+        </div>
+        <div class="modal-body">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Versão</th><th>Status</th><th>Criado por</th><th>Criado em</th><th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="versions-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

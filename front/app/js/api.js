@@ -34,10 +34,13 @@ const api = {
 
   // Versões
   createVersion: (botID, data) => api.post(`/bots/${botID}/versions`, data),
+  listVersions: (botID) => api.get(`/bots/${botID}/versions`),
   approveVersion: (botID, versionID, by) =>
     api.post(`/bots/${botID}/versions/${versionID}/approve`, { approved_by: by }),
   publishVersion: (botID, versionID, by) =>
     api.post(`/bots/${botID}/versions/${versionID}/publish`, { published_by: by }),
+  rollbackVersion: (botID, versionID, by) =>
+    api.post(`/bots/${botID}/versions/${versionID}/rollback`, { rolled_back_by: by }),
 
   // Geração por NL
   generatePreview: (data) => api.post('/generate/preview', data),

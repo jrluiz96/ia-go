@@ -1,10 +1,14 @@
 package domain
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// ErrInvalidTransition é retornado quando a transição de estado solicitada é inválida.
+var ErrInvalidTransition = errors.New("transição de estado inválida")
 
 type BotStatus string
 

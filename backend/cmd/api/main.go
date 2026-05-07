@@ -47,11 +47,11 @@ func main() {
 
 	// LLM client
 	var llmClient llm.Client
-	if cfg.LLM.APIKey != "" {
-		llmClient = llm.NewOpenAIClient(cfg.LLM.APIKey, cfg.LLM.Model, cfg.LLM.Temperature)
-		log.Printf("llm configurado: provider=%s model=%s", cfg.LLM.Provider, cfg.LLM.Model)
+	if cfg.LLM.APIKey != "" || cfg.LLM.BaseURL != "" {
+		llmClient = llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, cfg.LLM.Temperature)
+		log.Printf("llm configurado: provider=%s model=%s url=%s", cfg.LLM.Provider, cfg.LLM.Model, cfg.LLM.BaseURL)
 	} else {
-		log.Println("aviso: LLM_API_KEY não configurada — geração de bots desabilitada")
+		log.Println("aviso: LLM_API_KEY nem LLM_BASE_URL configurados — geração de bots desabilitada")
 	}
 
 	botRepo := postgres.NewBotRepo(db)

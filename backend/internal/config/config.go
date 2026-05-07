@@ -48,6 +48,7 @@ func (r RedisConfig) Addr() string {
 type LLMConfig struct {
 	Provider    string
 	APIKey      string
+	BaseURL     string
 	Model       string
 	Temperature float64
 }
@@ -77,6 +78,7 @@ func Load() (*Config, error) {
 		LLM: LLMConfig{
 			Provider:    envStr("LLM_PROVIDER", "openai"),
 			APIKey:      envStr("LLM_API_KEY", ""),
+			BaseURL:     envStr("LLM_BASE_URL", ""),
 			Model:       envStr("LLM_MODEL", "gpt-4o-mini"),
 			Temperature: envFloat("LLM_TEMPERATURE", 0.2),
 		},

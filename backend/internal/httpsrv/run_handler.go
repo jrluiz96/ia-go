@@ -108,14 +108,28 @@ func (h *RunHandler) AdHocTest(w http.ResponseWriter, r *http.Request) {
 		if input.BotVersionID != uuid.Nil {
 			versionIDStr = input.BotVersionID.String()
 		}
+
+		// Inclui o contract_json da versão (com generated_files) para o worker ter o código
+		var contractJSON json.RawMessage
+		if input.BotVersionID != uuid.Nil {
+			if ver, verErr := h.botRepo.GetVersion(r.Context(), botID, input.BotVersionID); verErr == nil {
+				contract := mapsClone(ver.ContractJSON)
+				contract["bot_version"] = ver.Version
+				if raw, marshalErr := json.Marshal(contract); marshalErr == nil {
+					contractJSON = json.RawMessage(raw)
+				}
+			}
+		}
+
 		if _, err := h.queueClient.Publish(r.Context(), queue.StreamAdHoc, queue.JobPayload{
-			RunID:      runID,
-			BotID:      botID.String(),
-			VersionID:  versionIDStr,
-			RunType:    string(domain.RunTypeAdHocTest),
-			Params:     input.Params,
-			TraceID:    input.TraceID,
-			TimeoutSec: input.TimeoutSec,
+			RunID:        runID,
+			BotID:        botID.String(),
+			VersionID:    versionIDStr,
+			RunType:      string(domain.RunTypeAdHocTest),
+			Params:       input.Params,
+			TraceID:      input.TraceID,
+			TimeoutSec:   input.TimeoutSec,
+			ContractJSON: contractJSON,
 		}); err != nil {
 			// Falha ao enfileirar: atualiza status para fatal_error e retorna 503
 			_ = h.runRepo.UpdateStatus(r.Context(), runID, domain.RunStatusFatalError, &domain.WorkerOutputV1{
@@ -130,6 +144,18 @@ func (h *RunHandler) AdHocTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, created, http.StatusAccepted)
+}
+
+func mapsClone(input map[string]interface{}) map[string]interface{} {
+	if input == nil {
+		return map[string]interface{}{}
+	}
+
+	cloned := make(map[string]interface{}, len(input))
+	for key, value := range input {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func (h *RunHandler) Get(w http.ResponseWriter, r *http.Request) {

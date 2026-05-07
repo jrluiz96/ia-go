@@ -108,7 +108,9 @@ func (s *Scheduler) dispatch(ctx context.Context, sched *domain.BotSchedule) err
 
 	// Serializa o contrato v1 da versão published para enviar na fila.
 	// O worker usa esse contrato como fonte da verdade, evitando reconstrução com defaults.
-	contractBytes, err := json.Marshal(published.ContractJSON)
+	contract := mapsClone(published.ContractJSON)
+	contract["bot_version"] = published.Version
+	contractBytes, err := json.Marshal(contract)
 	if err != nil {
 		return fmt.Errorf("serializar contract_json bot_id=%s version=%d: %w",
 			sched.BotID, published.Version, err)
@@ -159,4 +161,16 @@ func (s *Scheduler) dispatch(ctx context.Context, sched *domain.BotSchedule) err
 
 	// Avança next_run_at APENAS após publish bem-sucedido.
 	return s.schedRepo.UpdateNextRun(ctx, sched.ID, sched.CronExpr, sched.Timezone)
+}
+
+func mapsClone(input map[string]interface{}) map[string]interface{} {
+	if input == nil {
+		return map[string]interface{}{}
+	}
+
+	cloned := make(map[string]interface{}, len(input))
+	for key, value := range input {
+		cloned[key] = value
+	}
+	return cloned
 }

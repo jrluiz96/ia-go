@@ -176,21 +176,99 @@ def process_job(payload_raw: str) -> WorkerOutputV1:
         )
 
     # Tenta carregar o módulo do bot pelo bot_id
-    # Convenção: bots/<bot_id>/main.py com função execute_steps
+    # Convenção: bots/<bot_id>/main.py com função execute_steps(page, contract, credentials) -> dict
+    # Se o contrato contiver generated_files, escreve em /tmp/bots/ antes de importar
     bot_module_name = f"bots.{bot_id.replace('-', '_')}.main"
-    try:
-        bot_module = importlib.import_module(bot_module_name)
-        steps_fn = getattr(bot_module, "execute_steps")
-    except (ImportError, AttributeError) as exc:
-        bound_log.error("worker.bot_nao_encontrado", error=str(exc))
-        return build_error(
-            run_id=run_id,
-            status=RunStatus.fatal_error,
-            error_code="ERR_BOT_NOT_FOUND",
-            error_message=f"Módulo do bot não encontrado: {bot_module_name}",
-            artifacts=[],
-            start_time=time.monotonic(),
-        )
+
+    generated_files: dict = contract_data.get("generated_files") or {}
+    if generated_files:
+        import sys
+        import os
+        import importlib.util
+
+        bot_dir = f"/tmp/bots/{bot_id.replace('-', '_')}"
+        os.makedirs(bot_dir, exist_ok=True)
+
+        # Escreve __init__.py e todos os arquivos gerados
+        bots_init = os.path.join("/tmp/bots", "__init__.py")
+        if not os.path.exists(bots_init):
+            open(bots_init, "w").close()
+        open(os.path.join(bot_dir, "__init__.py"), "w").close()
+
+        for fname, content in generated_files.items():
+            fpath = os.path.join(bot_dir, fname)
+            with open(fpath, "w", encoding="utf-8") as f:
+                f.write(content)
+            bound_log.info("worker.arquivo_escrito", path=fpath)
+
+        # Carrega o bot usando spec_from_file_location para isolar o módulo
+        # e evitar que imports como "from contract import ..." resolvam para
+        # o contract.py do worker em vez do contract.py gerado do bot.
+        main_path = os.path.join(bot_dir, "main.py")
+        if not os.path.exists(main_path):
+            bound_log.error("worker.main_py_ausente", bot_dir=bot_dir,
+                            arquivos=list(generated_files.keys()))
+            return build_error(
+                run_id=run_id,
+                status=RunStatus.fatal_error,
+                error_code="ERR_BOT_NO_MAIN",
+                error_message=f"main.py não encontrado em generated_files. "
+                              f"Arquivos disponíveis: {list(generated_files.keys())}",
+                artifacts=[],
+                start_time=time.monotonic(),
+            )
+
+        # Remove módulos em cache do bot para forçar recarga limpa
+        for key in list(sys.modules.keys()):
+            if key.startswith(f"bots.{bot_id.replace('-', '_')}"):
+                del sys.modules[key]
+
+        # Garante que o diretório do bot está na frente do sys.path
+        # para que imports relativos dentro do bot (from contract import ...)
+        # resolvam para os arquivos locais do bot, não os do worker.
+        if bot_dir in sys.path:
+            sys.path.remove(bot_dir)
+        sys.path.insert(0, bot_dir)
+
+        try:
+            spec = importlib.util.spec_from_file_location(bot_module_name, main_path)
+            bot_module = importlib.util.module_from_spec(spec)
+            sys.modules[bot_module_name] = bot_module
+            spec.loader.exec_module(bot_module)
+            steps_fn = getattr(bot_module, "execute_steps")
+        except Exception as exc:
+            bound_log.error("worker.bot_load_error", error=str(exc))
+            return build_error(
+                run_id=run_id,
+                status=RunStatus.fatal_error,
+                error_code="ERR_BOT_LOAD",
+                error_message=f"Erro ao carregar bot de {main_path}: {exc}",
+                artifacts=[],
+                start_time=time.monotonic(),
+            )
+        finally:
+            # Restaura sys.path removendo o dir do bot — evita conflitos em runs futuras
+            if bot_dir in sys.path:
+                sys.path.remove(bot_dir)
+    else:
+        # Sem generated_files: tenta importar de bots/ estático (modo produção)
+        import sys
+        import os
+        if "/tmp" not in sys.path:
+            sys.path.insert(0, "/tmp")
+        try:
+            bot_module = importlib.import_module(bot_module_name)
+            steps_fn = getattr(bot_module, "execute_steps")
+        except (ImportError, AttributeError) as exc:
+            bound_log.error("worker.bot_nao_encontrado", error=str(exc))
+            return build_error(
+                run_id=run_id,
+                status=RunStatus.fatal_error,
+                error_code="ERR_BOT_NOT_FOUND",
+                error_message=f"Módulo do bot não encontrado: {bot_module_name}. Detalhes: {exc}",
+                artifacts=[],
+                start_time=time.monotonic(),
+            )
 
     import runner as runner_module
     return _execute_with_retry(contract, steps_fn, bound_log)

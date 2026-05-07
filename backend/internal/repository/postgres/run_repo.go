@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -49,12 +50,13 @@ func (r *RunRepo) GetByRunID(ctx context.Context, runID string) (*domain.BotRun,
 	run := &domain.BotRun{}
 	var inputRaw, outputRaw []byte
 	var botVersionID *uuid.UUID
+	var errorCode, errorMessage, workerID sql.NullString
 
 	err := r.db.QueryRow(ctx, q, runID).Scan(
 		&run.ID, &run.RunID, &run.BotID, &botVersionID, &run.RunType, &run.Status,
 		&run.ScheduledAt, &run.StartedAt, &run.FinishedAt, &run.LastHeartbeat,
-		&inputRaw, &outputRaw, &run.ErrorCode, &run.ErrorMessage,
-		&run.WorkerID, &run.TraceID, &run.Attempt, &run.CreatedAt, &run.UpdatedAt,
+		&inputRaw, &outputRaw, &errorCode, &errorMessage,
+		&workerID, &run.TraceID, &run.Attempt, &run.CreatedAt, &run.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -64,6 +66,9 @@ func (r *RunRepo) GetByRunID(ctx context.Context, runID string) (*domain.BotRun,
 	}
 
 	run.BotVersionID = botVersionID
+	run.ErrorCode = errorCode.String
+	run.ErrorMessage = errorMessage.String
+	run.WorkerID = workerID.String
 	if inputRaw != nil {
 		_ = json.Unmarshal(inputRaw, &run.InputJSON)
 	}
@@ -92,14 +97,17 @@ func (r *RunRepo) ListByBotID(ctx context.Context, botID uuid.UUID, limit int) (
 	for rows.Next() {
 		run := &domain.BotRun{}
 		var botVersionID *uuid.UUID
+		var errorCode, errorMessage sql.NullString
 		if err := rows.Scan(
 			&run.ID, &run.RunID, &run.BotID, &botVersionID, &run.RunType, &run.Status,
 			&run.ScheduledAt, &run.StartedAt, &run.FinishedAt,
-			&run.ErrorCode, &run.ErrorMessage, &run.TraceID, &run.Attempt, &run.CreatedAt,
+			&errorCode, &errorMessage, &run.TraceID, &run.Attempt, &run.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		run.BotVersionID = botVersionID
+		run.ErrorCode = errorCode.String
+		run.ErrorMessage = errorMessage.String
 		runs = append(runs, run)
 	}
 	return runs, nil
@@ -117,10 +125,10 @@ func (r *RunRepo) UpdateStatus(ctx context.Context, runID string, status domain.
 		    output_json = $2,
 		    error_code = $3,
 		    error_message = $4,
-		    finished_at = CASE WHEN $1 IN ('success','fatal_error','canceled') THEN NOW() ELSE finished_at END,
-		    started_at  = CASE WHEN $1 = 'running' AND started_at IS NULL THEN NOW() ELSE started_at END,
+		    finished_at = CASE WHEN $5 IN ('success','fatal_error','canceled') THEN NOW() ELSE finished_at END,
+		    started_at  = CASE WHEN $5 = 'running' AND started_at IS NULL THEN NOW() ELSE started_at END,
 		    updated_at  = NOW()
-		WHERE run_id = $5`
+		WHERE run_id = $6`
 
 	errCode := ""
 	errMsg := ""
@@ -129,8 +137,20 @@ func (r *RunRepo) UpdateStatus(ctx context.Context, runID string, status domain.
 		errMsg = output.ErrorMessage
 	}
 
-	_, err := r.db.Exec(ctx, q, status, outputBytes, errCode, errMsg, runID)
+	_, err := r.db.Exec(ctx, q, status, outputBytes, errCode, errMsg, string(status), runID)
 	return err
+}
+
+func mapsClone(input map[string]interface{}) map[string]interface{} {
+	if input == nil {
+		return map[string]interface{}{}
+	}
+
+	cloned := make(map[string]interface{}, len(input))
+	for key, value := range input {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func (r *RunRepo) AppendEvent(ctx context.Context, event *domain.RunEvent) error {
@@ -202,14 +222,17 @@ func (r *RunRepo) GetStuckRuns(ctx context.Context, olderThan time.Duration) ([]
 	for rows.Next() {
 		run := &domain.BotRun{}
 		var botVersionID *uuid.UUID
+		var errorCode, errorMessage sql.NullString
 		if err := rows.Scan(
 			&run.ID, &run.RunID, &run.BotID, &botVersionID, &run.RunType, &run.Status,
 			&run.ScheduledAt, &run.StartedAt, &run.FinishedAt,
-			&run.ErrorCode, &run.ErrorMessage, &run.TraceID, &run.Attempt, &run.CreatedAt,
+			&errorCode, &errorMessage, &run.TraceID, &run.Attempt, &run.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		run.BotVersionID = botVersionID
+		run.ErrorCode = errorCode.String
+		run.ErrorMessage = errorMessage.String
 		runs = append(runs, run)
 	}
 	return runs, nil

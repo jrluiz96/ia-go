@@ -55,7 +55,7 @@ class ContractV1(BaseModel):
     contract_version: str = "1.0"
     run_id: str
     bot_id: str
-    bot_version: int
+    bot_version: int = 1
     run_type: RunType
     params: dict[str, Any] = Field(default_factory=dict)
     auth_profile: AuthProfile | None = None

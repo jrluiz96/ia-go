@@ -5,6 +5,7 @@ Nunca retorna segredo no output. Usa apenas credential_ref/secret_id.
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 import structlog
@@ -12,6 +13,21 @@ import structlog
 from contract import AuthProfile
 
 log = structlog.get_logger()
+
+# Padrões que indicam valor de credencial vazado em mensagem de erro.
+# Não bloqueia o fluxo, apenas substitui o trecho suspeito.
+_SECRET_PATTERNS: list[re.Pattern] = [
+    re.compile(r"(?i)(password|passwd|secret|token|credential|apikey|api_key)\s*[:=]\s*\S+"),
+    re.compile(r"(?i)bearer\s+[A-Za-z0-9\-._~+/]+=*"),
+]
+_MASK = "[MASKED]"
+
+
+def sanitize_error(message: str) -> str:
+    """Remove trechos que parecem credenciais de uma mensagem de erro."""
+    for pattern in _SECRET_PATTERNS:
+        message = pattern.sub(_MASK, message)
+    return message
 
 
 class CredentialResolutionError(Exception):
@@ -30,9 +46,19 @@ def resolve_credentials(auth_profile: AuthProfile | None, run_id: str) -> dict[s
         log.info("auth.sem_perfil", run_id=run_id)
         return {}
 
+    # auth_type "none" → sem credenciais necessárias
+    if auth_profile.type in ("none", ""):
+        log.info("auth.tipo_sem_credencial", run_id=run_id, type=auth_profile.type)
+        return {}
+
     ref = auth_profile.credential_ref
     if ref is None:
         log.info("auth.sem_credential_ref", run_id=run_id, type=auth_profile.type)
+        return {}
+
+    # secret_id vazio → sem credenciais configuradas
+    if not ref.secret_id:
+        log.info("auth.secret_id_vazio", run_id=run_id, type=auth_profile.type)
         return {}
 
     log.info(

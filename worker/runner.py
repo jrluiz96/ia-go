@@ -13,7 +13,7 @@ import httpx
 import structlog
 from playwright.sync_api import Browser, Page, sync_playwright
 
-from auth import CredentialResolutionError, resolve_credentials
+from auth import CredentialResolutionError, resolve_credentials, sanitize_error
 from contract import ContractV1, RunStatus, WorkerOutputV1
 from outputs import build_error, build_success
 
@@ -70,7 +70,7 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
             run_id=contract.run_id,
             status=RunStatus.fatal_error,
             error_code="ERR_CREDENTIAL_RESOLUTION",
-            error_message=str(exc),
+            error_message=sanitize_error(str(exc)),
             artifacts=artifacts,
             start_time=start,
         )
@@ -112,7 +112,7 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
             run_id=contract.run_id,
             status=RunStatus.retryable_error,
             error_code="ERR_TIMEOUT",
-            error_message=f"Timeout após {contract.execution_context.timeout_sec}s: {exc}",
+            error_message=sanitize_error(f"Timeout após {contract.execution_context.timeout_sec}s: {exc}"),
             artifacts=artifacts,
             start_time=start,
         )
@@ -123,7 +123,7 @@ def run(contract: ContractV1, steps_fn: StepsFn) -> WorkerOutputV1:
             run_id=contract.run_id,
             status=RunStatus.fatal_error,
             error_code="ERR_EXECUTION",
-            error_message=str(exc),
+            error_message=sanitize_error(str(exc)),
             artifacts=artifacts,
             start_time=start,
         )

@@ -61,7 +61,7 @@ type GenerateBotResult struct {
 // GenerateBot chama o LLM com o template e persiste o draft, se o contexto estiver completo.
 func (s *BotService) GenerateBot(ctx context.Context, req GenerateBotRequest) (*GenerateBotResult, error) {
 	if s.llmClient == nil {
-		return nil, fmt.Errorf("serviço de geração indisponível: LLM_API_KEY não configurada")
+		return nil, fmt.Errorf("serviço de geração indisponível: LLM não configurado")
 	}
 	// Garante defaults
 	if req.TimeoutSec == 0 {
@@ -195,9 +195,9 @@ func ValidateGenerationContext(req GenerateBotRequest) []string {
 		missing = append(missing, "Qual é a URL base do sistema alvo?")
 	}
 	if req.AuthType == "" {
-		missing = append(missing, "Qual é o tipo de autenticação? (basic_login | bearer_token | client_cert_file | windows_cert_store)")
+		missing = append(missing, "Qual é o tipo de autenticação? (basic_login | bearer_token | client_cert_file | windows_cert_store | none)")
 	}
-	if req.SecretID == "" {
+	if req.SecretID == "" && req.AuthType != "none" && req.AuthType != "" {
 		missing = append(missing, "Qual é o secret_id da credencial? (ou confirme que será criada uma nova)")
 	}
 	if req.ObjetivoColeta == "" {

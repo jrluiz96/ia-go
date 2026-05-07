@@ -201,6 +201,36 @@ function showResult(box, version) {
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+async function resolveTestVersion(botID) {
+  const versions = await api.listVersions(botID);
+  const preferredOrder = ['published', 'approved', 'draft'];
+
+  for (const status of preferredOrder) {
+    const version = (versions || []).find((item) => item.status === status);
+    if (version) return version;
+  }
+
+  return (versions || [])[0] || null;
+}
+
+async function startBotTest(bot) {
+  const version = await resolveTestVersion(bot.id);
+  if (!version) {
+    throw new Error('Nenhuma versão disponível para teste neste bot.');
+  }
+
+  const run = await api.adHocTest(bot.id, {
+    bot_version_id: version.id,
+    timeout_sec: 120,
+    params: {},
+  });
+
+  state.filterBotID = bot.id;
+  location.hash = 'runs';
+  toast(`Teste iniciado para ${bot.name} (v${version.version})`, 'success');
+  return run;
+}
+
 async function pollRun(runID, attempts = 0) {
   if (attempts > 30) {
     toast('Timeout ao aguardar resultado', 'error');
@@ -274,10 +304,20 @@ async function bots() {
 
       const el = card.querySelector('.bot-card');
 
-      el.querySelector('[data-action="test"]').addEventListener('click', () => {
-        state.currentVersion = { bot_id: bot.id, id: null, version: '—' };
-        location.hash = 'criar';
-        toast('Bot selecionado para teste', 'info');
+      el.querySelector('[data-action="test"]').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Testando...';
+
+        try {
+          await startBotTest(bot);
+        } catch (e) {
+          toast('Erro ao iniciar teste: ' + e.message, 'error');
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
       });
 
       el.querySelector('[data-action="runs"]').addEventListener('click', () => {
@@ -285,12 +325,80 @@ async function bots() {
         location.hash = 'runs';
       });
 
+      const btnVersions = el.querySelector('[data-action="versions"]');
+      if (btnVersions) {
+        btnVersions.addEventListener('click', () => loadVersionsModal(bot));
+      }
+
       grid.appendChild(el);
     });
   } catch (e) {
     $('#bots-loading').classList.add('hidden');
     toast('Erro ao carregar bots: ' + e.message, 'error');
   }
+}
+
+// =====================================================================
+// Modal: Versões do bot + Rollback
+// =====================================================================
+async function loadVersionsModal(bot) {
+  let versions = [];
+  try {
+    versions = await api.listVersions(bot.id);
+  } catch (e) {
+    toast('Erro ao carregar versões: ' + e.message, 'error');
+    return;
+  }
+
+  const modal = document.getElementById('modal-versions');
+  if (!modal) return;
+
+  modal.querySelector('#modal-versions-title').textContent = `Versões — ${bot.name}`;
+  const tbody = modal.querySelector('#versions-tbody');
+  tbody.innerHTML = '';
+
+  if (!versions.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--color-muted)">Nenhuma versão encontrada.</td></tr>';
+  }
+
+  versions.forEach(v => {
+    const tr = document.createElement('tr');
+    const canRollback = v.status === 'archived' || v.status === 'approved';
+    tr.innerHTML = `
+      <td>v${v.version}</td>
+      <td>${statusBadge(v.status)}</td>
+      <td>${v.created_by || '—'}</td>
+      <td>${relTime(v.created_at)}</td>
+      <td>
+        ${canRollback
+          ? `<button class="btn btn-sm" data-vid="${v.id}" data-action="rollback">↩ Rollback</button>`
+          : '—'}
+      </td>`;
+    tr.querySelectorAll('[data-action="rollback"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const by = prompt('Seu nome (responsável pelo rollback):');
+        if (!by) return;
+        try {
+          await api.rollbackVersion(bot.id, v.id, by);
+          toast(`Rollback para v${v.version} realizado com sucesso.`, 'success');
+          hideModal('modal-versions');
+          await bots();
+        } catch (e) {
+          toast('Erro no rollback: ' + e.message, 'error');
+        }
+      });
+    });
+    tbody.appendChild(tr);
+  });
+
+  showModal('modal-versions');
+
+  const closeBtn = document.getElementById('btn-close-versions');
+  if (closeBtn) {
+    closeBtn.onclick = () => hideModal('modal-versions');
+  }
+  const overlay = document.getElementById('modal-versions');
+  overlay.onclick = (e) => { if (e.target === overlay) hideModal('modal-versions'); };
 }
 
 // =====================================================================
@@ -403,10 +511,23 @@ async function loadRuns() {
 async function openEvents(runID) {
   $('#events-run-id').textContent = runID;
   $('#events-list').innerHTML = '<div class="spinner-lg" style="margin:auto"></div>';
+  $('#events-output').classList.add('hidden');
+  $('#events-output-json').textContent = '';
   showModal('modal-events');
 
   try {
-    const events = await api.getEvents(runID);
+    const [events, run] = await Promise.all([
+      api.getEvents(runID),
+      api.getRun(runID),
+    ]);
+
+    // Exibe saída coletada (output_json.result)
+    const result = run?.output_json?.result;
+    if (result && Object.keys(result).length > 0) {
+      $('#events-output-json').textContent = JSON.stringify(result, null, 2);
+      $('#events-output').classList.remove('hidden');
+    }
+
     const list = $('#events-list');
     if (!events || events.length === 0) {
       list.innerHTML = '<p style="color:var(--text-muted);text-align:center">Sem eventos registrados.</p>';

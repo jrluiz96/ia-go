@@ -43,6 +43,7 @@ func NewRouter(h *Handlers) http.Handler {
 		r.Get("/bots/{botID}/versions", h.Bot.ListVersions)
 		r.Post("/bots/{botID}/versions/{versionID}/approve", h.Bot.ApproveVersion)
 		r.Post("/bots/{botID}/versions/{versionID}/publish", h.Bot.PublishVersion)
+		r.Post("/bots/{botID}/versions/{versionID}/rollback", h.Bot.RollbackVersion)
 
 		// Agendamentos
 		r.Post("/bots/{botID}/schedules", h.Schedule.Create)

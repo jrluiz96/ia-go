@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from auth import CredentialResolutionError, resolve_credentials
+from auth import CredentialResolutionError, resolve_credentials, sanitize_error
 from contract import AuthProfile, CredentialRef
 
 
@@ -54,3 +54,47 @@ class TestResolveCredentials:
         monkeypatch.setenv("SECRET_MY_CRED", "user:pass")
         result = resolve_credentials(make_auth_profile("my_cred"), "run_001")
         assert result["username"] == "user"
+
+
+class TestSanitizeError:
+    def test_mascara_password(self):
+        msg = "Connection failed: password=supersecret123"
+        result = sanitize_error(msg)
+        assert "supersecret123" not in result
+        assert "[MASKED]" in result
+
+    def test_mascara_token(self):
+        msg = "Failed: token=eyJhbGciOiJSUzI1NiJ9.abc"
+        result = sanitize_error(msg)
+        assert "eyJhbGciOiJSUzI1NiJ9" not in result
+
+    def test_mascara_bearer(self):
+        msg = "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.xyz.sig"
+        result = sanitize_error(msg)
+        assert "eyJhbGciOiJSUzI1NiJ9" not in result
+        assert "[MASKED]" in result
+
+    def test_mensagem_sem_segredo_inalterada(self):
+        msg = "Timeout ao aguardar elemento #login-btn após 30s"
+        result = sanitize_error(msg)
+        assert result == msg
+
+    def test_mascara_secret_dois_pontos(self):
+        msg = "secret: minha_senha_ultra_secreta"
+        result = sanitize_error(msg)
+        assert "minha_senha_ultra_secreta" not in result
+
+    def test_mascara_apikey(self):
+        msg = "api_key=sk-abcdef1234567890"
+        result = sanitize_error(msg)
+        assert "sk-abcdef1234567890" not in result
+
+    def test_string_vazia(self):
+        assert sanitize_error("") == ""
+
+    def test_multiplos_segredos(self):
+        msg = "password=abc token=xyz"
+        result = sanitize_error(msg)
+        assert "abc" not in result
+        assert "xyz" not in result
+

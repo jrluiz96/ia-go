@@ -224,6 +224,51 @@ func (h *BotHandler) ListVersions(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, versions, http.StatusOK)
 }
 
+// RollbackVersion republica uma versão anterior (approved ou archived) como published,
+// arquivando a versão publicada atual. Útil para reverter uma publicação problemática.
+// POST /api/v1/bots/{botID}/versions/{versionID}/rollback
+func (h *BotHandler) RollbackVersion(w http.ResponseWriter, r *http.Request) {
+	botID, err := uuid.Parse(chi.URLParam(r, "botID"))
+	if err != nil {
+		jsonError(w, "botID inválido", http.StatusBadRequest)
+		return
+	}
+
+	versionID, err := uuid.Parse(chi.URLParam(r, "versionID"))
+	if err != nil {
+		jsonError(w, "versionID inválido", http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		RolledBackBy string `json:"rolled_back_by"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "payload inválido", http.StatusBadRequest)
+		return
+	}
+	if body.RolledBackBy == "" {
+		jsonError(w, "rolled_back_by é obrigatório", http.StatusUnprocessableEntity)
+		return
+	}
+
+	v, err := h.botRepo.RollbackVersion(r.Context(), botID, versionID, body.RolledBackBy)
+	if err != nil {
+		if errors.Is(err, postgres.ErrNotFound) {
+			jsonError(w, "versão não encontrada", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, domain.ErrInvalidTransition) {
+			jsonError(w, "rollback inválido: a versão deve estar com status approved ou archived", http.StatusConflict)
+			return
+		}
+		jsonError(w, "erro ao fazer rollback: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, v, http.StatusOK)
+}
+
 // --- helpers ---
 
 func jsonResponse(w http.ResponseWriter, data interface{}, code int) {

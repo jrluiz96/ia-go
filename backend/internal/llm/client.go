@@ -14,20 +14,25 @@ type Client interface {
 	Complete(ctx context.Context, systemPrompt, userPrompt string) (string, error)
 }
 
-// OpenAIClient implementa Client usando a API da OpenAI.
+// OpenAIClient implementa Client usando a API compatível com OpenAI (OpenAI, Ollama, etc.).
 type OpenAIClient struct {
+	baseURL     string
 	apiKey      string
 	model       string
 	temperature float64
 	httpClient  *http.Client
 }
 
-func NewOpenAIClient(apiKey, model string, temperature float64) *OpenAIClient {
+func NewOpenAIClient(baseURL, apiKey, model string, temperature float64) *OpenAIClient {
+	if baseURL == "" {
+		baseURL = "https://api.openai.com/v1/chat/completions"
+	}
 	return &OpenAIClient{
+		baseURL:     baseURL,
 		apiKey:      apiKey,
 		model:       model,
 		temperature: temperature,
-		httpClient:  &http.Client{Timeout: 90 * time.Second},
+		httpClient:  &http.Client{Timeout: 240 * time.Second},
 	}
 }
 
@@ -71,12 +76,14 @@ func (c *OpenAIClient) Complete(ctx context.Context, systemPrompt, userPrompt st
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://api.openai.com/v1/chat/completions", bytes.NewReader(body))
+		c.baseURL, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("llm: criar request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

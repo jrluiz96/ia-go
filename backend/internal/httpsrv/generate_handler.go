@@ -47,8 +47,8 @@ func (h *GenerateHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	result, err := h.botSvc.GenerateBot(r.Context(), req)
 	if err != nil {
 		// LLM não configurado → 503 Service Unavailable
-		if strings.Contains(err.Error(), "LLM_API_KEY não configurada") {
-			jsonError(w, "serviço de geração indisponível: configure LLM_API_KEY", http.StatusServiceUnavailable)
+		if strings.Contains(err.Error(), "LLM não configurado") {
+			jsonError(w, "serviço de geração indisponível: configure LLM_BASE_URL ou LLM_API_KEY", http.StatusServiceUnavailable)
 			return
 		}
 		jsonError(w, "erro ao gerar bot: "+err.Error(), http.StatusInternalServerError)

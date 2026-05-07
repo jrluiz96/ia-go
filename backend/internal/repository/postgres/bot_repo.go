@@ -196,6 +196,49 @@ func (r *BotRepo) ArchiveCurrentPublished(ctx context.Context, botID uuid.UUID) 
 	return err
 }
 
+// RollbackVersion republicar uma versão approved ou archived como published,
+// arquivando a versão published atual. A versão alvo deve ser aprovada ou archived.
+// Retorna ErrNotFound se a versão não existir ou não pertencer ao bot.
+func (r *BotRepo) RollbackVersion(ctx context.Context, botID, versionID uuid.UUID, by string) (*domain.BotVersion, error) {
+	// Busca versão alvo
+	target, err := r.GetVersion(ctx, botID, versionID)
+	if err != nil {
+		return nil, err
+	}
+	if target.Status != domain.BotStatusApproved && target.Status != domain.BotStatusArchived {
+		return nil, domain.ErrInvalidTransition
+	}
+
+	// Executa em transação: arquiva atual + republica alvo
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// Arquiva publicada atual
+	_, err = tx.Exec(ctx,
+		`UPDATE bot_versions SET status = 'archived', updated_at = NOW() WHERE bot_id = $1 AND status = 'published'`,
+		botID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Republica versão alvo
+	_, err = tx.Exec(ctx,
+		`UPDATE bot_versions SET status = 'published', approved_by = $1, published_at = NOW(), updated_at = NOW() WHERE id = $2`,
+		by, versionID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return r.GetVersion(ctx, botID, versionID)
+}
+
 // ListVersionsByBot retorna todas as versões de um bot, ordenadas pela mais recente.
 func (r *BotRepo) ListVersionsByBot(ctx context.Context, botID uuid.UUID) ([]*domain.BotVersion, error) {
 	const q = `
