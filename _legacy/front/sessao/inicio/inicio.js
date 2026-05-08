@@ -1,1 +1,0 @@
-loadElement('nomePage', 0);
