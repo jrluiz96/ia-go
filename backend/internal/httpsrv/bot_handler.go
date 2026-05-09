@@ -101,6 +101,12 @@ func (h *BotHandler) CreateVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Valida campos mínimos do contrato antes de persistir
+	if missing := domain.ValidateContractJSON(input.ContractJSON); len(missing) > 0 {
+		jsonError(w, "contract_json inválido: campos obrigatórios ausentes: "+joinStrings(missing), http.StatusUnprocessableEntity)
+		return
+	}
+
 	v, err := h.botRepo.CreateVersion(r.Context(), input)
 	if err != nil {
 		jsonError(w, "erro ao criar versão: "+err.Error(), http.StatusInternalServerError)
@@ -279,4 +285,15 @@ func jsonResponse(w http.ResponseWriter, data interface{}, code int) {
 
 func jsonError(w http.ResponseWriter, msg string, code int) {
 	jsonResponse(w, map[string]string{"error": msg}, code)
+}
+
+func joinStrings(ss []string) string {
+	result := ""
+	for i, s := range ss {
+		if i > 0 {
+			result += ", "
+		}
+		result += s
+	}
+	return result
 }

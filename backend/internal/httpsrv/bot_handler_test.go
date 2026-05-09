@@ -313,3 +313,112 @@ func TestErrInvalidTransition_Identidade(t *testing.T) {
 		t.Fatal("errors.Is deve reconhecer ErrInvalidTransition")
 	}
 }
+
+// ─── CreateVersion — validação de contract_json ───────────────────────────────
+
+// createVersionHandlerFn replica a lógica de validação do BotHandler.CreateVersion
+// para permitir testes sem dependência de banco.
+func createVersionHandlerFn() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := uuid.Parse(chi.URLParam(r, "botID"))
+		if err != nil {
+			jsonError(w, "botID inválido", http.StatusBadRequest)
+			return
+		}
+		var input domain.CreateVersionInput
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			jsonError(w, "payload inválido", http.StatusBadRequest)
+			return
+		}
+		if input.CodePython == "" {
+			jsonError(w, "code_python é obrigatório", http.StatusUnprocessableEntity)
+			return
+		}
+		if input.ContractJSON == nil {
+			jsonError(w, "contract_json é obrigatório", http.StatusUnprocessableEntity)
+			return
+		}
+		if missing := domain.ValidateContractJSON(input.ContractJSON); len(missing) > 0 {
+			jsonError(w, "contract_json inválido: campos obrigatórios ausentes: "+joinStrings(missing), http.StatusUnprocessableEntity)
+			return
+		}
+		jsonResponse(w, map[string]string{"status": "ok"}, http.StatusCreated)
+	}
+}
+
+func newCreateVersionRequest(t *testing.T, botID string, body any) *http.Request {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(b))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("botID", botID)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+}
+
+func TestCreateVersion_ContratoValido_201(t *testing.T) {
+	req := newCreateVersionRequest(t, uuid.New().String(), map[string]interface{}{
+		"code_python": "print('ok')",
+		"contract_json": map[string]interface{}{
+			"contract_version":  "1.0",
+			"execution_context": map[string]interface{}{"timeout_sec": 120},
+		},
+	})
+	w := httptest.NewRecorder()
+	createVersionHandlerFn()(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("esperado 201, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreateVersion_SemCodePython_422(t *testing.T) {
+	req := newCreateVersionRequest(t, uuid.New().String(), map[string]interface{}{
+		"contract_json": map[string]interface{}{
+			"contract_version":  "1.0",
+			"execution_context": map[string]interface{}{},
+		},
+	})
+	w := httptest.NewRecorder()
+	createVersionHandlerFn()(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("esperado 422, got %d", w.Code)
+	}
+}
+
+func TestCreateVersion_SemContractJSON_422(t *testing.T) {
+	req := newCreateVersionRequest(t, uuid.New().String(), map[string]interface{}{
+		"code_python": "print('ok')",
+	})
+	w := httptest.NewRecorder()
+	createVersionHandlerFn()(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("esperado 422, got %d", w.Code)
+	}
+}
+
+func TestCreateVersion_ContractJSONSemContractVersion_422(t *testing.T) {
+	req := newCreateVersionRequest(t, uuid.New().String(), map[string]interface{}{
+		"code_python": "print('ok')",
+		"contract_json": map[string]interface{}{
+			"execution_context": map[string]interface{}{"timeout_sec": 60},
+		},
+	})
+	w := httptest.NewRecorder()
+	createVersionHandlerFn()(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("esperado 422, got %d", w.Code)
+	}
+}
+
+func TestCreateVersion_ContractJSONSemExecutionContext_422(t *testing.T) {
+	req := newCreateVersionRequest(t, uuid.New().String(), map[string]interface{}{
+		"code_python": "print('ok')",
+		"contract_json": map[string]interface{}{
+			"contract_version": "1.0",
+		},
+	})
+	w := httptest.NewRecorder()
+	createVersionHandlerFn()(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("esperado 422, got %d", w.Code)
+	}
+}

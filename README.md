@@ -94,6 +94,8 @@ docker-compose up -d
 
 ### Criando um bot
 
+Observacao: a experiencia abaixo descreve o fluxo atual da v0.1. O redesign da criacao por layout triplo (lista de bots + chat com IA + saida/codigo) esta documentado em [.tarefas/v1.0/12.md](.tarefas/v1.0/12.md), [.tarefas/v1.0/13.md](.tarefas/v1.0/13.md), [.tarefas/v1.0/14.md](.tarefas/v1.0/14.md) e [.tarefas/v1.0/15.md](.tarefas/v1.0/15.md).
+
 1. Acesse **http://localhost:9224/app/**
 2. Menu **Criar Bot** → descreva o que o bot deve fazer em linguagem natural
 3. Clique em **Gerar** — o LLM cria o código Python automaticamente
@@ -135,6 +137,21 @@ curl -X POST http://localhost:8080/api/v1/bots/{botID}/versions/{versionID}/roll
 ### Painel Operacional
 
 Menu **Operacional** → exibe contagem de runs por status e runs travadas (sem heartbeat há mais de 5 min).
+
+### Redesign planejado da criacao
+
+Para a proxima grande iteracao de UX, a criacao deixara de ser centrada em formulario e passara a usar um layout triplo:
+
+1. lista de bots;
+2. chat com a IA para criar/refinar a automacao;
+3. saida tecnica com codigo Python editavel.
+
+Essa mudanca ainda nao esta implementada. A documentacao de produto, impacto tecnico, sprints e testes foi registrada em:
+
+1. [.tarefas/v1.0/12.md](.tarefas/v1.0/12.md)
+2. [.tarefas/v1.0/13.md](.tarefas/v1.0/13.md)
+3. [.tarefas/v1.0/14.md](.tarefas/v1.0/14.md)
+4. [.tarefas/v1.0/15.md](.tarefas/v1.0/15.md)
 
 ---
 

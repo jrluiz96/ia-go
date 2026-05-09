@@ -72,3 +72,16 @@ type CreateScheduleInput struct {
 	CronExpr string    `json:"cron_expr"`
 	Timezone string    `json:"timezone"`
 }
+
+// ValidateContractJSON valida os campos mínimos obrigatórios do contract_json
+// antes de persistir uma nova versão. Retorna lista de campos ausentes.
+func ValidateContractJSON(c map[string]interface{}) []string {
+	var missing []string
+	required := []string{"contract_version", "execution_context"}
+	for _, k := range required {
+		if v, ok := c[k]; !ok || v == nil {
+			missing = append(missing, k)
+		}
+	}
+	return missing
+}

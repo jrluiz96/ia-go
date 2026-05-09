@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +20,11 @@ import (
 )
 
 func main() {
+	// Logs estruturados JSON (slog redireciona também o pacote log padrão)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("falha ao carregar config: %v", err)
